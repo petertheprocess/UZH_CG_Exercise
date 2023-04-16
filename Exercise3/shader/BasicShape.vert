@@ -23,8 +23,17 @@ uniform mat4 mvpMatrix;
 uniform bool gouraudShading;
 
 // TODO Task 1 Additional variables
-uniform vec3 lightPos;
-uniform vec3 lightColor;
+uniform struct materialBlock{
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float shininess;
+}material;
+
+uniform struct lightBlock{
+    vec3 position;
+    vec3 color;
+}light;
 uniform vec3 camPos;
 // END TODO
 
@@ -48,15 +57,15 @@ void main()
     if(gouraudShading)
     {
         // TODO Task 1 add there code for gouraud shading
-        vec3 lightVec=normalize(lightPos-worldPos);
+        vec3 lightVec=normalize(light.position-worldPos);
         vec3 viewVec=normalize(camPos-worldPos);
         
-        float lightDis=length(lightPos-worldPos);
-        vec3 lightSpecular=vColor*lightColor*pow(max(0,dot(normal,(lightVec+viewVec)/2)),16);
-        vec3 lightDiffuse=vColor*lightColor*max(0,dot(normal,lightVec))/(lightDis*lightDis);
-        vec3 lightAmbiant=vColor*lightColor*.2;
+        float lightDis=length(light.position-worldPos);
+        vec3 lightSpecular=light.color*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess)*material.specular;
+        vec3 lightDiffuse=light.color*max(0,dot(normal,lightVec))/(lightDis*lightDis)*material.diffuse;
+        vec3 lightAmbiant=light.color*material.ambient;
         
-        objectColor=lightSpecular+lightDiffuse+lightAmbiant;
+        objectColor=vColor*(lightAmbiant+lightSpecular+lightDiffuse);
         // END TODO
     }
 }

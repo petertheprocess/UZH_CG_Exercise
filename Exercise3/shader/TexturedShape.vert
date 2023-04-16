@@ -13,7 +13,7 @@ layout(location = 4) in vec3 vTangent;
 
 out vec3 objectColor;
 // TODO Task 2 Add the output data required in the fragment shader
-
+out vec2 texCoord;
 // TODO END
 
 // matrices that stay constant for the whole mesh.
@@ -24,6 +24,7 @@ void main()
 {
 	gl_Position = mvpMatrix * vec4(vPosition, 1);
 	objectColor = vColor;
+	texCoord = vTexCoords;
 
 	/* TODO Task 2 set texture coordinates for fragment shader here here and the output required for the nomal mapping */
 

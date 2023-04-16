@@ -145,9 +145,15 @@ namespace cgCourse
         //       but you can do that how you want. Remember that you can do the repetition of
         //       the same texture either by setting the texture coordinates between 0.0 and 1.0
         //       or by using one of the texture functions, e.g. with GL_REPEAT
-        for(int i = 0; i < positions.size(); i++) {
-            texCoords.push_back(glm::vec2(0.0,0.0));
-        }
+		float j_step = 1.0f/circleXZ.getSegments();
+		float i_step = 1.0f/circleXY.getVertices().size();
+		for (int j = 0; j < circleXZ.getSegments(); j++)
+		{
+			for (int i = 0; i < circleXY.getVertices().size(); i++)
+			{
+				texCoords.push_back(glm::vec2(float(i)/circleXY.getVertices().size(),float(j)/circleXZ.getSegments()));
+			}
+		}
         //texCoords...
 
         // END TODO

@@ -9,11 +9,11 @@
 in vec3 objectColor;
 
 /* TODO Task 2 Add the required input data */
-
+in vec2 texCoord;
 // END TODO
 
 /* TODO Task 2 declare texture samplers here */
-
+uniform sampler2D tex;
 // END TODO
 
 /* TODO Task 2 fill these structs with values from outside the shader similar
@@ -22,12 +22,12 @@ in vec3 objectColor;
 
 // TODO END
 
-out vec3 color;
+out vec4 color;
 
 void main()
 {
-	color = objectColor;
-
+	color = texture(tex, texCoord);
+	// color = vec4(0,objectColor);
 	/* TODO Task 2 add the source code to do phong shading but with the values of the color, normal and specular texture.
 	 *      Remember that you can also use the color output for debugging of the
 	 *      texture maps and texture coordinates in case that you face troubles.
