@@ -17,13 +17,13 @@ namespace cgCourse
 			// generated equally distributed segments on this circle
 			for (int j = 0; j < segments; j++)
 			{
-				float angle = (float) j * (360.0 / segments);
+				float angle = (float)j * (360.0 / segments);
 				float radians = Circle::toRadians(angle);
 				vertices.push_back(glm::vec2(radius * std::sin(radians), radius * std::cos(radians)));
 			}
 		}
 
-		const std::vector<glm::vec2> & getVertices() const
+		const std::vector<glm::vec2> &getVertices() const
 		{
 			return vertices;
 		}
@@ -52,13 +52,12 @@ namespace cgCourse
 		std::vector<glm::vec2> vertices;
 	};
 
-
 	Torus::Torus() : Shape()
 	{
 		float radiusX = 1.0;		// radius in xz-plane (main radius)
 		float radiusY = 0.3;		// radius in xy-plane (radius of the ring segments)
-		int segmentsInXZPlane = 50;	// subdivision in xz-plane (amount of ring segments)
-		int segmentsInXYPlane = 30;	// subdivision in xy-plane
+		int segmentsInXZPlane = 50; // subdivision in xz-plane (amount of ring segments)
+		int segmentsInXYPlane = 30; // subdivision in xy-plane
 
 		std::vector<glm::vec3> midPoints;
 		std::vector<float> midPointsLenght;
@@ -79,17 +78,17 @@ namespace cgCourse
 		}
 
 		// calculate faces
-		for(int j = 0; j < circleXZ.getSegments(); j++)
+		for (int j = 0; j < circleXZ.getSegments(); j++)
 		{
 			int startIdx = j * circleXY.getSegments();
-			if(j + 1 == circleXZ.getSegments())
+			if (j + 1 == circleXZ.getSegments())
 			{
 				// special case for connecting the last ring segments
-				for(int i = 0; i < circleXY.getSegments(); i++)
+				for (int i = 0; i < circleXY.getSegments(); i++)
 				{
 					int currIdx = startIdx + i;
 					int firstSegIdx = i;
-					if(i + 1 == circleXY.getSegments())
+					if (i + 1 == circleXY.getSegments())
 					{
 						addTwoFaces(currIdx, firstSegIdx, startIdx, 0);
 					}
@@ -106,7 +105,7 @@ namespace cgCourse
 				{
 					int currIdx = startIdx + i;
 					// special case for the last two faces of a single ring segment
-					if(i + 1 == circleXY.getSegments())
+					if (i + 1 == circleXY.getSegments())
 					{
 						addTwoFaces(currIdx, currIdx + circleXY.getSegments(), startIdx, startIdx + circleXY.getSegments());
 					}
@@ -119,14 +118,14 @@ namespace cgCourse
 		}
 
 		// just color the object from black to green
-		for(int i = 0; i < positions.size(); i++)
+		for (int i = 0; i < positions.size(); i++)
 		{
 			colors.push_back(glm::vec3(0.06, 0.55, 0.31));
 		}
 
 		// adding normals
 		normals.resize(positions.size());
-		for(const auto & f: faces)
+		for (const auto &f : faces)
 		{
 			glm::vec3 v1 = positions[f.y] - positions[f.x];
 			glm::vec3 v2 = positions[f.z] - positions[f.x];
@@ -136,44 +135,71 @@ namespace cgCourse
 			normals[f.z] += n;
 		}
 
-		for(auto & n: normals)
+		for (auto &n : normals)
 			n = glm::normalize(n);
 
-        // TODO Task 2 set the texture coordinates for the torus
-        //       first thing here is to think about how you want to map the texture
-        //       on the torus. I decided that the texture should appear 4 times on the torus,
-        //       but you can do that how you want. Remember that you can do the repetition of
-        //       the same texture either by setting the texture coordinates between 0.0 and 1.0
-        //       or by using one of the texture functions, e.g. with GL_REPEAT
-		float j_step = 1.0f/circleXZ.getSegments();
-		float i_step = 1.0f/circleXY.getVertices().size();
+		// TODO Task 2 set the texture coordinates for the torus
+		//       first thing here is to think about how you want to map the texture
+		//       on the torus. I decided that the texture should appear 4 times on the torus,
+		//       but you can do that how you want. Remember that you can do the repetition of
+		//       the same texture either by setting the texture coordinates between 0.0 and 1.0
+		//       or by using one of the texture functions, e.g. with GL_REPEAT
+		float j_step = 1.0f / circleXZ.getSegments();
+		float i_step = 1.0f / circleXY.getVertices().size();
 		for (int j = 0; j < circleXZ.getSegments(); j++)
 		{
 			for (int i = 0; i < circleXY.getVertices().size(); i++)
 			{
-				texCoords.push_back(glm::vec2(float(i)/circleXY.getVertices().size(),float(j)/circleXZ.getSegments()));
+				texCoords.push_back(glm::vec2(float(i) / circleXY.getVertices().size(), float(j) / circleXZ.getSegments()));
 			}
 		}
-        //texCoords...
+		// texCoords...
 
-        // END TODO
+		// END TODO
 
-        // TODO Task 2 set the tangents for the torus. To do this think about how the tangents
-        // have to look like for the torus by drawing it to a paper sheet.
-        // There are multiple ways of generating the tangents. Be aware that the normals are interpolated over
-        // all adjacent faces so the tangents at these points will not necessarily follow one of the surface edges.
+		// TODO Task 2 set the tangents for the torus. To do this think about how the tangents
+		// have to look like for the torus by drawing it to a paper sheet.
+		// There are multiple ways of generating the tangents. Be aware that the normals are interpolated over
+		// all adjacent faces so the tangents at these points will not necessarily follow one of the surface edges.
 
-        // tangents...
-        for(int i = 0; i < positions.size(); i++) {
-            tangents.push_back(glm::vec3(0.0,0.0,0.0));
-        }
-        // END TODO
-    }
+		// tangents...
+		tangents.resize(positions.size());
+
+		for (int i = 0; i < faces.size(); i++)
+		{
+			glm::vec3 pos1 = positions[faces[i].x];
+			glm::vec3 pos2 = positions[faces[i].y];
+			glm::vec3 pos3 = positions[faces[i].z];
+			glm::vec2 uv1 = texCoords[faces[i].x];
+			glm::vec2 uv2 = texCoords[faces[i].y];
+			glm::vec2 uv3 = texCoords[faces[i].z];
+
+			glm::vec3 edge1 = pos2 - pos1;
+			glm::vec3 edge2 = pos3 - pos1;
+			glm::vec2 deltaUV1 = uv2 - uv1;
+			glm::vec2 deltaUV2 = uv3 - uv1;
+
+			GLfloat f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+			glm::vec3 tangent;
+			tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+			tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+			tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+			tangent = glm::normalize(tangent);
+
+			tangents[faces[i].x] += tangent;
+			tangents[faces[i].y] += tangent;
+			tangents[faces[i].z] += tangent;
+		}
+
+		for (auto &t : tangents)
+			t = glm::normalize(t);
+		// END TODO
+	}
 
 	void Torus::addTwoFaces(unsigned int _idx0, unsigned int _idx1, unsigned int _idx2, unsigned int _idx3)
 	{
 		faces.push_back(glm::uvec3(_idx0, _idx2, _idx1));
 		faces.push_back(glm::uvec3(_idx2, _idx3, _idx1));
 	}
-}
 
+}

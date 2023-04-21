@@ -73,15 +73,15 @@ namespace cgCourse
 		cubetex->loadFromFile(std::string(RES_DIR) + "/container.png");
 
 		// cubetexSpec = std::make_shared<Texture>();
-		// cubetexSpec->loadFromFile("../res/container_specular.png");
-		// cubetexNormal = std::make_shared<Texture>();
-		// cubetexNormal->loadFromFile("../res/container_normal.jpg");
+		// cubetexSpec->loadFromFile(std::string(RES_DIR) + "/container_specular.png");
+		cubetexNormal = std::make_shared<Texture>();
+		cubetexNormal->loadFromFile(std::string(RES_DIR) + "/container_normal.jpg");
 		torustex = std::make_shared<Texture>();
 		torustex->loadFromFile(std::string(RES_DIR) + "/brickwall.jpg");
-		// torustexSpec = std::make_shared<Texture>();
-		// torustexSpec->loadFromFile("../res/brickwall_specular.jpg");
-		// torustexNormal = std::make_shared<Texture>();
-		// torustexNormal->loadFromFile("./res/brickwall_normal.jpg");
+		torustexSpec = std::make_shared<Texture>();
+		torustexSpec->loadFromFile(std::string(RES_DIR) + "/brickwall_specular.jpg");
+		torustexNormal = std::make_shared<Texture>();
+		torustexNormal->loadFromFile(std::string(RES_DIR) + "/brickwall_normal.jpg");
         // ...
 
         // TODO END
@@ -127,13 +127,15 @@ namespace cgCourse
 		renderLightBox();
 
         // TODO Task 1 add the light information to the programs requiring it
-		addLightVariables(programForBasicShape);
+		
         // TODO END
 		
         if (renderMode == GOURAUD_SHADING || renderMode == PHONG_SHADING) {
+			addLightVariables(programForBasicShape);
             renderBasicCube();
             renderBasicTorus();
         } else {
+			addLightVariables(programForTexturedShape);
             renderTexturedCube();
             renderTexturedTorus();
         }
@@ -213,7 +215,20 @@ namespace cgCourse
 		 */
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, cubetex->getTexHandle());
-		glUniform1i(programForTexturedShape->getUniformLocation("tex"), 0);
+		glUniform1i(programForTexturedShape->getUniformLocation("texMap"), 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, cubetexNormal->getTexHandle());
+		glUniform1i(programForTexturedShape->getUniformLocation("normalMap"), 1);
+
+		// material
+		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
+		glUniform3fv(programForTexturedShape->getUniformLocation("material.ambient"),1,ambient);
+		GLfloat diffuse[3] ={0.6f,0.6f,0.6f};
+		glUniform3fv(programForTexturedShape->getUniformLocation("material.diffuse"),1,diffuse);
+		GLfloat specular[3] ={0.6f,0.6f,0.6f};
+		glUniform3fv(programForTexturedShape->getUniformLocation("material.specular"),1,specular);
+		glUniform1f(programForTexturedShape->getUniformLocation("material.shininess"),float(16.0));
         // End TODO
 
         mvpMatrix = cam.getViewProjectionMatrix() * cube->getModelMatrix();
@@ -243,10 +258,22 @@ namespace cgCourse
 		 */
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, torustex->getTexHandle());
-		glUniform1i(programForTexturedShape->getUniformLocation("tex"), 0);
+		glUniform1i(programForTexturedShape->getUniformLocation("texMap"), 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, torustexNormal->getTexHandle());
+		glUniform1i(programForTexturedShape->getUniformLocation("normalMap"), 1);
+		
+		// material
+		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
+		glUniform3fv(programForTexturedShape->getUniformLocation("material.ambient"),1,ambient);
+		GLfloat diffuse[3] ={0.6f,0.6f,0.6f};
+		glUniform3fv(programForTexturedShape->getUniformLocation("material.diffuse"),1,diffuse);
+		GLfloat specular[3] ={0.6f,0.6f,0.6f};
+		glUniform3fv(programForTexturedShape->getUniformLocation("material.specular"),1,specular);
+		glUniform1f(programForTexturedShape->getUniformLocation("material.shininess"),float(16.0));
+
         // End TODO
-
-
 		mvpMatrix = cam.getViewProjectionMatrix() * torus->getModelMatrix();
 		glUniformMatrix4fv(programForTexturedShape->getUniformLocation("modelMatrix"), 1, GL_FALSE, &torus->getModelMatrix()[0][0]);
 		glUniformMatrix4fv(programForTexturedShape->getUniformLocation("mvpMatrix"), 1, GL_FALSE, &mvpMatrix[0][0]);
