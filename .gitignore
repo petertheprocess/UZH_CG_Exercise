@@ -3,3 +3,4 @@
 /Exercise0_submit
 /vcpkg
 *.zip
+**/build
