@@ -72,8 +72,8 @@ namespace cgCourse
 		cubetex = std::make_shared<Texture>();
 		cubetex->loadFromFile(std::string(RES_DIR) + "/container.png");
 
-		// cubetexSpec = std::make_shared<Texture>();
-		// cubetexSpec->loadFromFile(std::string(RES_DIR) + "/container_specular.png");
+		cubetexSpec = std::make_shared<Texture>();
+		cubetexSpec->loadFromFile(std::string(RES_DIR) + "/container_specular.png");
 		cubetexNormal = std::make_shared<Texture>();
 		cubetexNormal->loadFromFile(std::string(RES_DIR) + "/container_normal.jpg");
 		torustex = std::make_shared<Texture>();
@@ -221,6 +221,9 @@ namespace cgCourse
 		glBindTexture(GL_TEXTURE_2D, cubetexNormal->getTexHandle());
 		glUniform1i(programForTexturedShape->getUniformLocation("normalMap"), 1);
 
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, cubetexSpec->getTexHandle());
+		glUniform1i(programForTexturedShape->getUniformLocation("specMap"), 2);
 		// material
 		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
 		glUniform3fv(programForTexturedShape->getUniformLocation("material.ambient"),1,ambient);
@@ -264,6 +267,9 @@ namespace cgCourse
 		glBindTexture(GL_TEXTURE_2D, torustexNormal->getTexHandle());
 		glUniform1i(programForTexturedShape->getUniformLocation("normalMap"), 1);
 		
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, torustexSpec->getTexHandle());
+		glUniform1i(programForTexturedShape->getUniformLocation("specMap"), 2);
 		// material
 		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
 		glUniform3fv(programForTexturedShape->getUniformLocation("material.ambient"),1,ambient);

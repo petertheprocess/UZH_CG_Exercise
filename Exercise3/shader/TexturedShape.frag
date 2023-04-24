@@ -18,6 +18,7 @@ in mat3 TBN;
 /* TODO Task 2 declare texture samplers here */
 uniform sampler2D texMap;
 uniform sampler2D normalMap;
+uniform sampler2D specMap;
 
 uniform struct materialBlock{
     vec3 ambient;
@@ -53,15 +54,19 @@ void main()
 	vec3 normal = texture(normalMap,texCoord).rgb;
 	normal = normalize(normal * 2.0 - 1.0);
 	normal = TBN * normal;
+
+    vec3 texColor = texture(texMap,texCoord).rgb;
+    vec3 specColor = texture(specMap,texCoord).rgb;
 	
 	vec3 lightVec=normalize(light.position-worldPos);
     vec3 viewVec=normalize(camPos-worldPos);
         
     float lightDis=length(light.position-worldPos);
-    vec3 lightSpecular=light.color*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess)*material.specular;
-    vec3 lightDiffuse=light.color*max(0,dot(normal,lightVec))/(lightDis*lightDis)*material.diffuse;
-    vec3 lightAmbiant=light.color*material.ambient;
-    color=vec4(texture(texMap,texCoord).rgb*(lightSpecular+lightDiffuse+lightAmbiant),1.0f);
+    vec3 specular=vec3(1.0f,1.0f,1.0f)*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess)*specColor;
+    vec3 diffuse=light.color*max(0,dot(normal,lightVec))/(lightDis*lightDis)*texColor;
+    vec3 ambiant=light.color*material.ambient*texColor;
+    color=vec4((specular+diffuse+ambiant),1.0f);
+    // color=vec4(specColor,1.0f);
 	// color=vec4(objectColor,1.0f);
 	// TODO END
 }
