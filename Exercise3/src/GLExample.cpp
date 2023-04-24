@@ -160,13 +160,13 @@ namespace cgCourse
         programForBasicShape->bind();
         mvpMatrix = cam.getViewProjectionMatrix() * cube->getModelMatrix();
 		// material
-		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
+		GLfloat ambient[3] ={0.4f,0.4f,0.4f};
 		glUniform3fv(programForBasicShape->getUniformLocation("material.ambient"),1,ambient);
-		GLfloat diffuse[3] ={0.6f,0.6f,0.6f};
+		GLfloat diffuse[3] ={0.9f,0.9f,0.9f};
 		glUniform3fv(programForBasicShape->getUniformLocation("material.diffuse"),1,diffuse);
-		GLfloat specular[3] ={0.6f,0.6f,0.6f};
+		GLfloat specular[3] ={1.0f,1.0f,1.0f};
 		glUniform3fv(programForBasicShape->getUniformLocation("material.specular"),1,specular);
-		glUniform1f(programForBasicShape->getUniformLocation("material.shininess"),float(16.0));
+		glUniform1f(programForBasicShape->getUniformLocation("material.shininess"),float(4.0));
 
         glUniformMatrix4fv(programForBasicShape->getUniformLocation("mvpMatrix"), 1, GL_FALSE, &mvpMatrix[0][0]);
         glUniformMatrix4fv(programForBasicShape->getUniformLocation("modelMatrix"), 1, GL_FALSE, &cube->getModelMatrix()[0][0]);
@@ -179,13 +179,13 @@ namespace cgCourse
         programForBasicShape->bind();
         mvpMatrix = cam.getViewProjectionMatrix() * torus->getModelMatrix();
 		// material
-		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
+		GLfloat ambient[3] ={0.4f,0.4f,0.4f};
 		glUniform3fv(programForBasicShape->getUniformLocation("material.ambient"),1,ambient);
-		GLfloat diffuse[3] ={0.6f,0.6f,0.6f};
+		GLfloat diffuse[3] ={0.9f,0.9f,0.9f};
 		glUniform3fv(programForBasicShape->getUniformLocation("material.diffuse"),1,diffuse);
-		GLfloat specular[3] ={0.6f,0.6f,0.6f};
+		GLfloat specular[3] ={1.0f,1.0f,1.0f};
 		glUniform3fv(programForBasicShape->getUniformLocation("material.specular"),1,specular);
-		glUniform1f(programForBasicShape->getUniformLocation("material.shininess"),float(16.0));
+		glUniform1f(programForBasicShape->getUniformLocation("material.shininess"),float(4.0));
 
         glUniformMatrix4fv(programForBasicShape->getUniformLocation("mvpMatrix"), 1, GL_FALSE, &mvpMatrix[0][0]);
         glUniformMatrix4fv(programForBasicShape->getUniformLocation("modelMatrix"), 1, GL_FALSE, &torus->getModelMatrix()[0][0]);
@@ -225,13 +225,9 @@ namespace cgCourse
 		glBindTexture(GL_TEXTURE_2D, cubetexSpec->getTexHandle());
 		glUniform1i(programForTexturedShape->getUniformLocation("specMap"), 2);
 		// material
-		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
+		GLfloat ambient[3] ={0.4f,0.4f,0.4f};
 		glUniform3fv(programForTexturedShape->getUniformLocation("material.ambient"),1,ambient);
-		GLfloat diffuse[3] ={0.6f,0.6f,0.6f};
-		glUniform3fv(programForTexturedShape->getUniformLocation("material.diffuse"),1,diffuse);
-		GLfloat specular[3] ={0.6f,0.6f,0.6f};
-		glUniform3fv(programForTexturedShape->getUniformLocation("material.specular"),1,specular);
-		glUniform1f(programForTexturedShape->getUniformLocation("material.shininess"),float(16.0));
+		glUniform1f(programForTexturedShape->getUniformLocation("material.shininess"),float(8.0));
         // End TODO
 
         mvpMatrix = cam.getViewProjectionMatrix() * cube->getModelMatrix();
@@ -271,13 +267,9 @@ namespace cgCourse
 		glBindTexture(GL_TEXTURE_2D, torustexSpec->getTexHandle());
 		glUniform1i(programForTexturedShape->getUniformLocation("specMap"), 2);
 		// material
-		GLfloat ambient[3] ={0.6f,0.6f,0.6f};
+		GLfloat ambient[3] ={0.4f,0.4f,0.4f};
 		glUniform3fv(programForTexturedShape->getUniformLocation("material.ambient"),1,ambient);
-		GLfloat diffuse[3] ={0.6f,0.6f,0.6f};
-		glUniform3fv(programForTexturedShape->getUniformLocation("material.diffuse"),1,diffuse);
-		GLfloat specular[3] ={0.6f,0.6f,0.6f};
-		glUniform3fv(programForTexturedShape->getUniformLocation("material.specular"),1,specular);
-		glUniform1f(programForTexturedShape->getUniformLocation("material.shininess"),float(16.0));
+		glUniform1f(programForTexturedShape->getUniformLocation("material.shininess"),float(8.0));
 
         // End TODO
 		mvpMatrix = cam.getViewProjectionMatrix() * torus->getModelMatrix();
@@ -297,17 +289,19 @@ namespace cgCourse
 		if(drawTorusNormals) {
             programForTexturedNormals->bind();
             /* TODO Task 2 Activate and bind the normal texture*/
-
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, torustexNormal->getTexHandle());
+			glUniform1i(programForTexturedNormals->getUniformLocation("normalMap"), 0);
             // TODO END
-
             mvpMatrix = cam.getViewProjectionMatrix() * torus->getModelMatrix();
             glUniformMatrix4fv(programForTexturedNormals->getUniformLocation("mvpMatrix"), 1, GL_FALSE, &mvpMatrix[0][0]);
+			glUniformMatrix4fv(programForTexturedNormals->getUniformLocation("modelMatrix"), 1, GL_FALSE, &torus->getModelMatrix()[0][0]);
             normalsTorus->draw();
 
             /* TODO Task 2 unbind normal texture by setting glBindTexture for the active texture layer
             *       to zero.
             */
-
+		   	glBindTexture(GL_TEXTURE_2D, 0);
             // TODO END
 
             programForTexturedNormals->unbind();

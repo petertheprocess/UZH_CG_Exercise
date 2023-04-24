@@ -22,8 +22,6 @@ uniform sampler2D specMap;
 
 uniform struct materialBlock{
     vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
     float shininess;
 }material;
 uniform struct lightBlock{
@@ -62,11 +60,12 @@ void main()
     vec3 viewVec=normalize(camPos-worldPos);
         
     float lightDis=length(light.position-worldPos);
-    vec3 specular=vec3(1.0f,1.0f,1.0f)*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess)*specColor;
+    // assume light for specular to be vec3(1,1,1)
+    vec3 specular=specColor*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess);
     vec3 diffuse=light.color*max(0,dot(normal,lightVec))/(lightDis*lightDis)*texColor;
     vec3 ambiant=light.color*material.ambient*texColor;
     color=vec4((specular+diffuse+ambiant),1.0f);
-    // color=vec4(specColor,1.0f);
+    // color=vec4(specular,1.0f);
 	// color=vec4(objectColor,1.0f);
 	// TODO END
 }

@@ -62,10 +62,11 @@ void main()
         
         float lightDis=length(light.position-worldPos);
         vec3 lightSpecular=light.color*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess)*material.specular;
-        vec3 lightDiffuse=light.color*max(0,dot(normal,lightVec))/(lightDis*lightDis)*material.diffuse;
+        vec3 lightDiffuse=light.color*max(0,dot(normal,lightVec))*material.diffuse;
         vec3 lightAmbiant=light.color*material.ambient;
         
-        objectColor=vColor*(lightAmbiant+lightSpecular+lightDiffuse);
+        objectColor=objectColor*(lightSpecular+lightDiffuse+lightAmbiant);
+        // objectColor=light.color*max(0,dot(normal,lightVec));
         // END TODO
     }
 }
