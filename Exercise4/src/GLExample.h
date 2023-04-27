@@ -9,6 +9,7 @@
 #include "Camera.h"
 #include "Texture.h"
 
+
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -48,14 +49,16 @@ namespace cgCourse
 		bool end() override;
 
 		void imgui() override {};
+		
 
 	private:
 		void addLightVariables(const std::shared_ptr<ShaderProgram>& _program);
 		void renderLightBox();
 		void renderCubes(const glm::mat4 & lightSpaceMatrix);
 		void renderTorus(const glm::mat4 & lightSpaceMatrix);
-
+		
 		void shadow_mapping(const glm::mat4 & lightSpaceMatrix);
+		glm::mat4 computeLightSpaceMatrix(const glm::uvec2 & _extent);
 
 		std::shared_ptr<ShaderProgram> programForShadows;
 		std::shared_ptr<ShaderProgram> programForShape;
@@ -73,6 +76,7 @@ namespace cgCourse
 		std::shared_ptr<Texture> torustex;
 		std::shared_ptr<Texture> torustexSpec;
         std::shared_ptr<Texture> torustexNormal;
+
 
 		float animation = 0;
 		LightMotionMode animationDir = Forward;

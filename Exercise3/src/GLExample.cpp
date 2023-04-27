@@ -27,7 +27,7 @@ namespace cgCourse
 		if(!lightbox->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
-		lightbox->setPosition(glm::vec3(0.0, 0.5, -1.0));
+		lightbox->setPosition(glm::vec3(0.0, 0.5, -2.0));
 		lightbox->setScaling(glm::vec3(0.05, 0.05, 0.05));
 
 		// Init models
@@ -37,15 +37,15 @@ namespace cgCourse
 		if(!cube->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
-        cube->setPosition(glm::vec3(-2.5, 0.5, 1.5));
-        cube->setScaling(glm::vec3(1.5, 1.5, 1.5));
+		cube->setPosition(glm::vec3(-2, -1.5, 5));
+		cube->setScaling(glm::vec3(2.5, 2.5, 2.5));
 
         // create torus
 		torus = std::make_shared<Torus>();
 		if(!torus->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
-		torus->setPosition(glm::vec3(1.5, 0.0, 0.0));
+		torus->setPosition(glm::vec3(-1, 0, 0));
 
 		// Init multiline field for normals of objects
 		normalsTorus = std::make_shared<MultiLine>(torus->positions,
@@ -90,7 +90,8 @@ namespace cgCourse
 
 	bool GLExample::update()
 	{
-		torus->setRotation(glm::radians(10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		torus->setRotation(5, glm::vec3(1.0f, 1.0f, 1.0f));
+		cube->setRotation(1, glm::vec3(0, 1.0f, 0));
 
 		if(animationDir == Forward)
 		{
@@ -101,13 +102,13 @@ namespace cgCourse
 		}
 		else
 		{
-			if(animation < -4.0)
+			if(animation < -2.0)
 				animationDir = Forward;
 			else
 				animation -= 0.01;
 		}
 
-		lightbox->setPosition(glm::vec3(animation, 0.5, -0.5));
+		lightbox->setPosition(glm::vec3(animation, 1, -2));
 
 		return true;
 	}

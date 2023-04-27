@@ -3,18 +3,16 @@
 
 #include <iostream>
 
-
 namespace cgCourse
 {
-	GLExample::GLExample(glm::uvec2 _windowSize, std::string _title): GLApp(_windowSize, _title, false) {}
+	GLExample::GLExample(glm::uvec2 _windowSize, std::string _title) : GLApp(_windowSize, _title, false) {}
 
 	bool GLExample::init()
 	{
-		cam.create(	getFramebufferSize(),
-					glm::vec3(3, 3, -3),
-					glm::vec3(0, 0, 0),
-					glm::vec3(0, 1, 0)
-					);
+		cam.create(getFramebufferSize(),
+				   glm::vec3(3, 3, -3),
+				   glm::vec3(0, 0, 0),
+				   glm::vec3(0, 1, 0));
 
 		programForShadows = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/Shadows");
 		programForShape = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/Shape");
@@ -22,7 +20,7 @@ namespace cgCourse
 		programForLightBox = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/Lightbox");
 
 		lightbox = std::make_shared<Cube>();
-		if(!lightbox->createVertexArray(0, 1, 2, 3, 4))
+		if (!lightbox->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
 		lightbox->setPosition(glm::vec3(0.0, 0.5, -2.0));
@@ -30,31 +28,28 @@ namespace cgCourse
 		lightboxColor = glm::vec3(1.0, 1.0, 1.0);
 
 		cube = std::make_shared<Cube>();
-		if(!cube->createVertexArray(0, 1, 2, 3, 4))
+		if (!cube->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
 		cube->setPosition(glm::vec3(-2, -1.5, 5));
 		cube->setScaling(glm::vec3(2.5, 2.5, 2.5));
 
 		torus = std::make_shared<Torus>();
-		if(!torus->createVertexArray(0, 1, 2, 3, 4))
+		if (!torus->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
 		torus->setPosition(glm::vec3(-1, 0, 0));
 
-		normalsTorus = std::make_shared<MultiLine>(	torus->positions,
-													torus->normals,
-													torus->tangents,
-													torus->texCoords
-													);
-		if(!normalsTorus->createVertexArray(0, 1, 2, 3, 4))
+		normalsTorus = std::make_shared<MultiLine>(torus->positions,
+												   torus->normals,
+												   torus->tangents,
+												   torus->texCoords);
+		if (!normalsTorus->createVertexArray(0, 1, 2, 3, 4))
 			return false;
-
 
 		light.ambientTerm = {1, 1, 1};
 		light.diffuseTerm = {1, 1, 1};
 		light.specularTerm = {1, 1, 1};
-
 
 		cubetex = std::make_shared<Texture>();
 		cubetex->loadFromFile(std::string(RES_DIR) + "/container.png");
@@ -73,10 +68,22 @@ namespace cgCourse
 
 		torustexSpec = std::make_shared<Texture>();
 		torustexSpec->loadFromFile(std::string(RES_DIR) + "/brickwall_specular.jpg");
-		
 
 		// TODO: shadow mapping buffers initialization, use struct ShadowMapping object: shadows
-	
+		glGenFramebuffers(1, &shadows.depthMapFBO);
+		glGenTextures(1, &shadows.depthMap);
+		glBindTexture(GL_TEXTURE_2D, shadows.depthMap);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+					 shadows.width, shadows.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glBindFramebuffer(GL_FRAMEBUFFER, shadows.depthMapFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadows.depthMap, 0);
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		return true;
 	}
@@ -86,16 +93,16 @@ namespace cgCourse
 		torus->setRotation(5, glm::vec3(1.0f, 1.0f, 1.0f));
 		cube->setRotation(1, glm::vec3(0, 1.0f, 0));
 
-		if(animationDir == Forward)
+		if (animationDir == Forward)
 		{
-			if(animation > 1.5)
+			if (animation > 1.5)
 				animationDir = Backward;
 			else
 				animation += 0.01;
 		}
 		else
 		{
-			if(animation < -2.0)
+			if (animation < -2.0)
 				animationDir = Forward;
 			else
 				animation -= 0.01;
@@ -109,13 +116,13 @@ namespace cgCourse
 	bool GLExample::render()
 	{
 		glEnable(GL_DEPTH_TEST);
-	
+
 		// TODO: compute lightSpaceMatrix
-		glm::mat4 lightSpaceMatrix;
-		
+		glm::mat4 lightSpaceMatrix = computeLightSpaceMatrix(getFramebufferSize());
+
 		update();
 		shadow_mapping(lightSpaceMatrix);
-		
+
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_CULL_FACE);
@@ -131,12 +138,28 @@ namespace cgCourse
 		return true;
 	}
 
-	void GLExample::shadow_mapping(const glm::mat4 & lightSpaceMatrix)
+	void GLExample::shadow_mapping(const glm::mat4 &lightSpaceMatrix)
 	{
 		// TODO: render to the depth buffer
+		programForShadows->bind();
+		
+		glViewport(0, 0, shadows.width, shadows.height);
+		glBindFramebuffer(GL_FRAMEBUFFER, shadows.depthMapFBO);
+		glClear(GL_DEPTH_BUFFER_BIT); 
+		//cube
+		mvpMatrix = lightSpaceMatrix * cube->getModelMatrix();
+		glUniformMatrix4fv(programForShadows->getUniformLocation("mvpMatrix"),1, GL_FALSE, &mvpMatrix[0][0]);
+		cube->draw();
+		//torus
+		mvpMatrix = lightSpaceMatrix * torus->getModelMatrix();
+		glUniformMatrix4fv(programForShadows->getUniformLocation("mvpMatrix"),1, GL_FALSE, &mvpMatrix[0][0]);
+		torus->draw();
+		// reset viewport and default framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, getFramebufferSize().x, getFramebufferSize().y);
 	}
 
-	void GLExample::addLightVariables(const std::shared_ptr<ShaderProgram> & program)
+	void GLExample::addLightVariables(const std::shared_ptr<ShaderProgram> &program)
 	{
 		program->bind();
 		glUniform3fv(program->getUniformLocation("camPos"), 1, &cam.getPosition()[0]);
@@ -147,7 +170,7 @@ namespace cgCourse
 		program->unbind();
 	}
 
-	void GLExample::renderCubes(const glm::mat4 & lightSpaceMatrix)
+	void GLExample::renderCubes(const glm::mat4 &lightSpaceMatrix)
 	{
 		programForShape->bind();
 
@@ -157,7 +180,7 @@ namespace cgCourse
 		glBindTexture(GL_TEXTURE_2D, cubetexSpec->getTexHandle());
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, cubetexNormal->getTexHandle());
-		
+
 		glUniform1i(programForShape->getUniformLocation("shapetex"), 0);
 		glUniform1i(programForShape->getUniformLocation("shapetexSpec"), 1);
 		glUniform1i(programForShape->getUniformLocation("shapetexNormal"), 2);
@@ -180,7 +203,7 @@ namespace cgCourse
 		programForShape->unbind();
 	}
 
-	void GLExample::renderTorus(const glm::mat4 & lightSpaceMatrix)
+	void GLExample::renderTorus(const glm::mat4 &lightSpaceMatrix)
 	{
 		programForShape->bind();
 
@@ -190,7 +213,7 @@ namespace cgCourse
 		glBindTexture(GL_TEXTURE_2D, torustexSpec->getTexHandle());
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, torustexNormal->getTexHandle());
-		
+
 		glUniform1i(programForShape->getUniformLocation("shapetex"), 0);
 		glUniform1i(programForShape->getUniformLocation("shapetexSpec"), 1);
 		glUniform1i(programForShape->getUniformLocation("shapetexNormal"), 2);
@@ -210,8 +233,8 @@ namespace cgCourse
 
 		programForShape->unbind();
 
-
-		if(!drawTorusNormals) return;
+		if (!drawTorusNormals)
+			return;
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, torustex->getTexHandle());
@@ -239,11 +262,23 @@ namespace cgCourse
 		programForLightBox->unbind();
 	}
 
+	glm::mat4 GLExample::computeLightSpaceMatrix(const glm::uvec2 &_extent)
+	{
+		const float &fieldOfView = 45.0f;
+		const float &nearPlane = 0.1;
+		const float &farPlane = 50.0;
+		const float &aspect = float(_extent.x) / float(_extent.y);
+
+		glm::mat4 projectionMatrix = glm::perspective(fieldOfView, aspect, nearPlane, farPlane);
+		glm::mat4 viewMatrix = glm::lookAt(lightbox->getPosition(), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+		return projectionMatrix * viewMatrix;
+	}
+
 	bool GLExample::end()
 	{
 		programForShape->deleteShaderProgramFromGPU();
 		programForTorusNormals->deleteShaderProgramFromGPU();
 		return true;
 	}
-}
 
+}

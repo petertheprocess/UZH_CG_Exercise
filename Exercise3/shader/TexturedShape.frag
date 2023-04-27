@@ -51,18 +51,19 @@ void main()
 	// color = texture(tex, texCoord);
 	vec3 normal = texture(normalMap,texCoord).rgb;
 	normal = normalize(normal * 2.0 - 1.0);
-	normal = TBN * normal;
+	normal = normalize(TBN * normal);
 
     vec3 texColor = texture(texMap,texCoord).rgb;
-    vec3 specColor = texture(specMap,texCoord).rgb;
+    float specColor = texture(specMap,texCoord).r;
 	
 	vec3 lightVec=normalize(light.position-worldPos);
     vec3 viewVec=normalize(camPos-worldPos);
         
     float lightDis=length(light.position-worldPos);
     // assume light for specular to be vec3(1,1,1)
-    vec3 specular=specColor*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess);
-    vec3 diffuse=light.color*max(0,dot(normal,lightVec))/(lightDis*lightDis)*texColor;
+    // vec3 specular=vec3(1.0)*specColor*pow(max(0,dot(normal,(lightVec+viewVec)/2)),material.shininess);
+    vec3 specular=vec3(1.0)*specColor*pow(max(0,dot(reflect(-lightVec, normal),viewVec)),material.shininess);
+    vec3 diffuse=light.color*max(0,dot(normal,lightVec))*texColor;
     vec3 ambiant=light.color*material.ambient*texColor;
     color=vec4((specular+diffuse+ambiant),1.0f);
     // color=vec4(specular,1.0f);

@@ -26,7 +26,7 @@ uniform struct Light
 float compute_shadow(vec3 normal, vec3 lightDir)
 {
 	// TODO: complete the shadow evaluation
-	return 0;
+	return 0.0f;
 }
 
 void main()
