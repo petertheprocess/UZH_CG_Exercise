@@ -14,7 +14,7 @@ out vec4 posLightSpace;
 
 uniform mat4 modelMatrix;
 uniform mat4 mvpMatrix;
-
+uniform mat4 lightSpaceMatrix;
 void main()
 {
 	gl_Position = mvpMatrix * vec4(vPosition, 1);
@@ -29,6 +29,6 @@ void main()
 	tbn = mat3(t, b, n);
 	
 	// TODO: compute the posLightSpace using the lightSpaceMatrix
-	// posLightSpace = 
+	posLightSpace = lightSpaceMatrix*modelMatrix*vec4(vPosition, 1);
 }
 

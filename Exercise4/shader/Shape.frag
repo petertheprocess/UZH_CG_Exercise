@@ -26,7 +26,12 @@ uniform struct Light
 float compute_shadow(vec3 normal, vec3 lightDir)
 {
 	// TODO: complete the shadow evaluation
-	return 0.0f;
+	vec3 projCoords = posLightSpace.xyz / posLightSpace.w;
+	projCoords = projCoords * 0.5 + 0.5;
+	float closestDepth = texture(shadows, projCoords.xy).r; 
+	float currentDepth = projCoords.z;
+	float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+	return shadow;
 }
 
 void main()
