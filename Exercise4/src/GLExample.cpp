@@ -271,12 +271,12 @@ namespace cgCourse
 
 	glm::mat4 GLExample::computeLightSpaceMatrix(const glm::uvec2 &_extent)
 	{
-		// const float &fieldOfView = 45.0f;
+		const float &fieldOfView = 90.0f;
 		const float &nearPlane = 0.1;
 		const float &farPlane = 50.0;
-		// const float &aspect = float(_extent.x) / float(_extent.y);
+		const float &aspect = float(_extent.x) / float(_extent.y);
 
-		glm::mat4 projectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane);
+		glm::mat4 projectionMatrix = glm::perspective(fieldOfView, aspect, nearPlane, farPlane);
 		glm::mat4 viewMatrix = glm::lookAt(lightbox->getPosition(), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 		return projectionMatrix * viewMatrix;
 	}
