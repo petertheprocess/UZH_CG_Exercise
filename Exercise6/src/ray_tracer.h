@@ -25,8 +25,9 @@ class rt_simple: public ray_tracer
 {
 	// TODO: add possible data members and class methods.
 	private:
-	const std::vector<glm::vec3> & positions;
-	const std::vector<glm::uvec3> & faces;
+	glm::mat4 model_matrix;
+	std::vector<glm::vec3> positions;
+	std::vector<glm::uvec3> faces;
 	unsigned add_mesh(const Shape & mesh);
 
 	public:
