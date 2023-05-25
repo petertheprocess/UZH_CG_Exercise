@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.sdf": "xml",
+        "*.m": "matlab",
+        "iterator": "cpp"
+    }
+}

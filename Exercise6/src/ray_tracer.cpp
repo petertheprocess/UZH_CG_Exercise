@@ -44,6 +44,14 @@ glm::vec3 ray_tracer::ray_view_dir(const glm::ivec2 & pos, const glm::ivec2 & wi
 }
 
 // TODO: add the definition of the methods here.
+bool intersectTest(const BVHNode & node,const glm::vec3 & org, const glm::vec3 & dir){
+	if(node == nullptr)
+		return false;
+	
+	
+}
+
+
 float rt_simple::intersect_depth(const glm::vec3 & org, const glm::vec3 & dir){
 	float depth = NULL;
 	for(auto face:faces){
@@ -75,12 +83,21 @@ float rt_simple::intersect_depth(const glm::vec3 & org, const glm::vec3 & dir){
 unsigned rt_simple::add_mesh(const Shape & mesh){
 	model_matrix = mesh.getModelMatrix();
 	for(auto face:mesh.faces){
+<<<<<<< HEAD
 		faces.push_back(face+glm::uvec3(positions.size()));
 	}
 	for(auto position:mesh.positions){
 		positions.push_back(glm::vec3(model_matrix * glm::vec4(position, 1.f)));
 	}
 	
+=======
+		Triangle tri;
+		tri.p0 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]],1.0f));
+		tri.p1 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]],1.0f));
+		tri.p2 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]],1.0f));
+		triangles.push_back(tri)
+	}
+>>>>>>> 911c057c1e9b07d4f53166a45d2925092e6d986c
 }
 // TODO: add the definition of the methods here.
 
