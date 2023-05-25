@@ -44,12 +44,20 @@ glm::vec3 ray_tracer::ray_view_dir(const glm::ivec2 & pos, const glm::ivec2 & wi
 }
 
 // TODO: add the definition of the methods here.
+bool intersectTest(const BVHNode & node,const glm::vec3 & org, const glm::vec3 & dir){
+	if(node == nullptr)
+		return false;
+	
+	
+}
+
+
 float rt_simple::intersect_depth(const glm::vec3 & org, const glm::vec3 & dir){
 	float depth = NULL;
 	for(auto face:faces){
-		glm::vec3 p0 = glm::mat3(model_matrix)*positions[face.x];
-		glm::vec3 p1 = glm::mat3(model_matrix)*positions[face.y];
-		glm::vec3 p2 = glm::mat3(model_matrix)*positions[face.z];
+		glm::vec3 p0 = positions[face.x];
+		glm::vec3 p1 = positions[face.y];
+		glm::vec3 p2 = positions[face.z];
 
 		glm::vec3 normal = cross(p1-p0,p2-p0);
 		float d = -dot(normal,p1);
@@ -74,10 +82,13 @@ float rt_simple::intersect_depth(const glm::vec3 & org, const glm::vec3 & dir){
 
 unsigned rt_simple::add_mesh(const Shape & mesh){
 	model_matrix = mesh.getModelMatrix();
-	for(auto position:mesh.positions){
-		positions.push_back(glm::mat3(model_matrix)*position);
+	for(auto face:mesh.faces){
+		Triangle tri;
+		tri.p0 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]],1.0f));
+		tri.p1 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]],1.0f));
+		tri.p2 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]],1.0f));
+		triangles.push_back(tri)
 	}
-	faces.insert(faces.end(),mesh.faces.begin(),mesh.faces.end());
 }
 // TODO: add the definition of the methods here.
 
