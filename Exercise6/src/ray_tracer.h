@@ -45,7 +45,8 @@ private:
 	};
 
 	unsigned add_mesh(const Shape &mesh);
-	bool intersectTest(const BVHNode & node,const glm::vec3 & org, const glm::vec3 & dir);
+	float intersect_bvh(BVHNode *node,const glm::vec3 & org, const glm::vec3 & dir);
+	float intersect_triangle(const Triangle &tri, const glm::vec3 &org, const glm::vec3 &dir);
 
 	void computeBoundingBox(const glm::vec3 &triangle, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
 	{
@@ -65,6 +66,8 @@ private:
 			return nullptr;
 		}
 		BVHNode *node = new BVHNode;
+		node->triangleId = -1;
+
 		if (start == end)
 		{
 			// 叶节点，包含一个三角形

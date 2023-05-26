@@ -41,65 +41,110 @@ glm::vec3 ray_tracer::ray_view_dir(const glm::ivec2 &pos, const glm::ivec2 &wind
 }
 
 // TODO: add the definition of the methods here.
-bool rt_simple::intersectTest(BVHNode *node, const glm::vec3 &org, const glm::vec3 &dir)
+float rt_simple::intersect_triangle(const Triangle &tri, const glm::vec3 &org, const glm::vec3 &dir)
 {
-	if (node == nullptr) return false;
-	
+	float depth = -1;
+	glm::vec3 normal = cross(tri.p1 - tri.p0, tri.p2 - tri.p0);
+	float d = -dot(normal, p1);
+	if (fabsf(dot(normal, dir)) < EPSILON)
+		return depth;
+
+	float t = (-d - dot(normal, org)) / dot(normal, dir);
+	// t<0 means opposite direction of dir
+	if (t < 0)
+		return depth;
+	glm::vec3 p_intersect = org + t * dir;
+	float dis = distance(p_intersect, org);
+	if (depth != NULL && dis > depth)
+		return depth;
+
+	if (dot(cross(p1 - p0, p_intersect - p0), normal) < 0)
+		return depth;
+	if (dot(cross(p2 - p1, p_intersect - p1), normal) < 0)
+		return depth;
+	if (dot(cross(p0 - p2, p_intersect - p2), normal) < 0)
+		return depth;
+
+	return depth = dis;
+}
+
+float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::vec3 &dir)
+{
+	float depth = -1;
+	if (node == nullptr)
+		return depth;
+
 	float t_min[3];
 	float t_max[3];
 
-	for(int i=0;i<3;i++){
-		float t_min[i] = (node->boundsMin[i]-org[i]) / dir[i];
-		float t_max[i] = (node->boundsMas[i]-org[i]) / dir[i];
-		if(t_min[i]>t_max[i])
-			std::swap(t_max[i],t_min[i]);
+	for (int i = 0; i < 3; i++)
+	{
+		float t_min[i] = (node->boundsMin[i] - org[i]) / dir[i];
+		float t_max[i] = (node->boundsMas[i] - org[i]) / dir[i];
+		if (t_min[i] > t_max[i])
+			std::swap(t_max[i], t_min[i]);
 	}
 
-	float t_enter = std::max(std::max(t_min[0],t_min[1]),t_min[2]);
-	float t_exit = std::min(std::min(t_max[0],t_max[1]),t_max[2]);
+	float t_enter = std::max(std::max(t_min[0], t_min[1]), t_min[2]);
+	float t_exit = std::min(std::min(t_max[0], t_max[1]), t_max[2]);
 
-	if(t_exit < t_enter || t_exit<=0)
-		return false;
-	else{ //与包围盒相交，判断是否与其中的三角形相交
-
+	if (t_exit < t_enter || t_exit <= 0)
+		return depth;
+	else if (node->triangleId) // 濡傛灉鍖呭洿鐩掗噷鏈変笁瑙掑舰
+	{
+		depth = intersect_triangle(triangles[node->triangleId], org, dir);
 	}
-
+	else
+	{
+		float left_depth = intersect_bvh(node->leftChild, org, dir);
+		float right_depth = intersect_bvh(node->rightChild, org, dir);
+		if(left_depth>0 && right_depth>0){
+			depth = std::min(left_depth,right_depth);
+		} else if(left_depth<0 && right_depth>0){
+			depth = right_depth;
+		} else{
+			depth = left_depth;
+		}
+	}
+	return depth;
 }
 
 float rt_simple::intersect_depth(const glm::vec3 &org, const glm::vec3 &dir)
 {
-	float depth = NULL;
-	for (auto face : faces)
-	{
-		glm::vec3 p0 = positions[face.x];
-		glm::vec3 p1 = positions[face.y];
-		glm::vec3 p2 = positions[face.z];
+	float depth = intersect_bvh(rootNode,org,dir);
+	return depth>0? depth:0;
 
-		glm::vec3 normal = cross(p1 - p0, p2 - p0);
-		float d = -dot(normal, p1);
-		if (fabsf(dot(normal, dir)) < EPSILON)
-			continue;
+	// for (auto face : faces)
+	// {
+	// 	glm::vec3 p0 = positions[face.x];
+	// 	glm::vec3 p1 = positions[face.y];
+	// 	glm::vec3 p2 = positions[face.z];
 
-		float t = (-d - dot(normal, org)) / dot(normal, dir);
-		// t<0 means opposite direction of dir
-		if (t < 0)
-			continue;
-		glm::vec3 p_intersect = org + t * dir;
-		float dis = distance(p_intersect, org);
-		if (depth != NULL && dis > depth)
-			continue;
+	// 	glm::vec3 normal = cross(p1 - p0, p2 - p0);
+	// 	float d = -dot(normal, p1);
+	// 	if (fabsf(dot(normal, dir)) < EPSILON)
+	// 		continue;
 
-		if (dot(cross(p1 - p0, p_intersect - p0), normal) < 0)
-			continue;
-		if (dot(cross(p2 - p1, p_intersect - p1), normal) < 0)
-			continue;
-		if (dot(cross(p0 - p2, p_intersect - p2), normal) < 0)
-			continue;
+	// 	float t = (-d - dot(normal, org)) / dot(normal, dir);
+	// 	// t<0 means opposite direction of dir
+	// 	if (t < 0)
+	// 		continue;
+	// 	glm::vec3 p_intersect = org + t * dir;
+	// 	float dis = distance(p_intersect, org);
+	// 	if (depth != NULL && dis > depth)
+	// 		continue;
 
-		depth = dis;
-	}
+	// 	if (dot(cross(p1 - p0, p_intersect - p0), normal) < 0)
+	// 		continue;
+	// 	if (dot(cross(p2 - p1, p_intersect - p1), normal) < 0)
+	// 		continue;
+	// 	if (dot(cross(p0 - p2, p_intersect - p2), normal) < 0)
+	// 		continue;
 
-	return depth;
+	// 	depth = dis;
+	// }
+
+	// return depth;
 };
 
 unsigned rt_simple::add_mesh(const Shape &mesh)
