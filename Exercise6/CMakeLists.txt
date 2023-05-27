@@ -5,7 +5,7 @@ set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg/scripts/buildsyste
 project(exercise)
 
 if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Release)
+	set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -26,5 +26,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 FILE(GLOB_RECURSE sources ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
 add_executable(${PROJECT_NAME} ${sources})
+# add_executable(TESTPro ${CMAKE_SOURCE_DIR}/utest/test.cpp)
 target_link_libraries(${PROJECT_NAME} OpenGL::GL GLEW::GLEW glfw glm::glm imgui OpenMP::OpenMP_CXX embree)
+# target_link_libraries(TESTPro OpenGL::GL GLEW::GLEW glfw glm::glm imgui OpenMP::OpenMP_CXX)
 

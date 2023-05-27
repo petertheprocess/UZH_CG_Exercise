@@ -331,7 +331,7 @@ namespace cgCourse
 			build_time = omp_get_wtime();
 				// if(!rt) rt = new rt_embree({torus.get(), cube.get()});
 				// TODO: uncomment the line to test your ray tracer implementation and comment the line before.
-				if(!rt) rt = new rt_simple({torus.get(),cube.get()});
+				if(!rt) rt = new rt_simple({cube.get()});
 			build_time = omp_get_wtime() - build_time;
 
 			rays_time = omp_get_wtime();
