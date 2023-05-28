@@ -33,9 +33,10 @@ glm::vec3 ray_tracer::ray_view_dir(const glm::ivec2 &pos, const glm::ivec2 &wind
 	glm::vec4 view_space = inv_proj_view * clip_space;
 	glm::vec3 world_space(view_space.x / view_space.w, view_space.y / view_space.w, view_space.z / view_space.w);
 	srand(1);
-	glm::vec3 random_offset = {rand() / double(RAND_MAX), rand() / double(RAND_MAX), rand() / double(RAND_MAX)};
+	float rand_factor = 0.0001;
+	glm::vec3 random_offset = {rand() / double(RAND_MAX) * rand_factor, rand() / double(RAND_MAX) * rand_factor, rand() / double(RAND_MAX) * rand_factor};
 
-	glm::vec3 ray_view_dir = glm::normalize(world_space - cam_pos);
+	glm::vec3 ray_view_dir = glm::normalize(world_space - cam_pos + random_offset);
 	// TODO: implement this function to compute the direction of primary rays with a random offset.
 	// HINT: do this first, and test it with the embree tracer, then complete the rt_simple class.
 	return ray_view_dir;
@@ -93,15 +94,16 @@ float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::v
 	float t_exit = std::min(std::min(t_max[0], t_max[1]), t_max[2]);
 	// std::cout<<"t_enter"<<t_enter<<"t_exit"<<t_exit<<std::endl;
 	
-	if ( t_exit < t_enter || t_exit < 0)
-	// 不能用== 因为最后的子节点包围盒实际上是一个很薄的平面，因为只包了一个三角形
+	if ( t_exit <= t_enter || t_exit<0)
+	// // 不能用== 因为最后的子节点包围盒实际上是一个很薄的平面，因为只包了一个三角形
 		return depth;
 	else if (node->triangleId >= 0) // 如果包围盒里有三角形
 	{
 		Triangle tri = triangles[node->triangleId];
 		// std::cout<<node->triangleId<<","<<tri.p1.x<<std::endl;
 		float self_depth = intersect_triangle(tri, org, dir);
-		if (node->leftChild != nullptr)
+	
+		if (node->leftChild != nullptr) //双三角形
 		{
 			float left_depth = intersect_bvh(node->leftChild, org, dir);
 			if (left_depth > 0 && self_depth > 0)
@@ -116,9 +118,11 @@ float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::v
 			{
 				depth = left_depth;
 			}
-		}else{
+			// depth = intersect_bvh(node->leftChild, org, dir);
+		}else{//单三角形
 			depth = self_depth;
 		}
+		// depth = self_depth;
 	}
 	else
 	{

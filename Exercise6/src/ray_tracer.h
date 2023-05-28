@@ -52,13 +52,22 @@ private:
 
 	void computeBoundingBox(const Triangle &triangle, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
 	{
-		boundsMin.x = std::min(std::min(triangle.p0.x, triangle.p1.x), triangle.p2.x);
-		boundsMin.y = std::min(std::min(triangle.p0.y, triangle.p1.y), triangle.p2.y);
-		boundsMin.z = std::min(std::min(triangle.p0.z, triangle.p1.z), triangle.p2.z);
+		// boundsMin.x = std::min(std::min(triangle.p0.x, triangle.p1.x), triangle.p2.x);
+		// boundsMin.y = std::min(std::min(triangle.p0.y, triangle.p1.y), triangle.p2.y);
+		// boundsMin.z = std::min(std::min(triangle.p0.z, triangle.p1.z), triangle.p2.z);
 
-		boundsMax.x = std::max(std::max(triangle.p0.x, triangle.p1.x), triangle.p2.x);
-		boundsMax.y = std::max(std::max(triangle.p0.y, triangle.p1.y), triangle.p2.y);
-		boundsMax.z = std::max(std::max(triangle.p0.z, triangle.p1.z), triangle.p2.z);
+		// boundsMax.x = std::max(std::max(triangle.p0.x, triangle.p1.x), triangle.p2.x);
+		// boundsMax.y = std::max(std::max(triangle.p0.y, triangle.p1.y), triangle.p2.y);
+		// boundsMax.z = std::max(std::max(triangle.p0.z, triangle.p1.z), triangle.p2.z);
+
+		for(int i=0;i<3;i++){
+			boundsMin[i] = std::min(std::min(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
+			boundsMax[i] = std::max(std::max(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
+			if(boundsMax[i] - boundsMin[i] < 0.1){
+				boundsMax[i] += 0.1;
+				boundsMin[i] -= 0.1;
+			}
+		}
 		// std::cout << "boundsBox" << std::endl;
 	}
 
@@ -95,6 +104,12 @@ private:
 			// std::cout << "make triId:" << node->leftChild->triangleId << std::endl;
 			computeBoundingBox(triangles[start], node->leftChild->boundsMin, node->leftChild->boundsMax);
 			computeBoundingBox(triangles[end], node->boundsMin, node->boundsMax);
+			for (int i = 0; i < 3; ++i)
+			{
+				// std::cout<<"bounds"<<std::endl;
+				node->boundsMin[i] = std::min(node->leftChild->boundsMin[i], node->boundsMin[i]);
+				node->boundsMax[i] = std::max(node->leftChild->boundsMax[i], node->boundsMax[i]);
+			}
 		}
 		else
 		{
@@ -146,18 +161,18 @@ private:
 
 		return node;
 	}
-	void preorderTraversal(BVHNode *root)
-	{
-		// std::cout << "root->triangleId"
-		// 		  << " "<< std::endl;
-		if (root == nullptr )
-		{
-			return;
-		}
-		std::cout<< root->triangleId<<std::endl;					 // 打印当前节点的值
-		preorderTraversal(root->leftChild);	 // 遍历左子树
-		preorderTraversal(root->rightChild); // 遍历右子树
-	};
+	// void preorderTraversal(BVHNode *root)
+	// {
+	// 	// std::cout << "root->triangleId"
+	// 	// 		  << " "<< std::endl;
+	// 	if (root == nullptr )
+	// 	{
+	// 		return;
+	// 	}
+	// 	std::cout<< root->triangleId<<std::endl;					 // 打印当前节点的值
+	// 	preorderTraversal(root->leftChild);	 // 遍历左子树
+	// 	preorderTraversal(root->rightChild); // 遍历右子树
+	// };
 
 public:
 	// TODO: complete the definition of this method.
@@ -169,7 +184,7 @@ public:
 		std::cout << "triNum:" << triangles.size() << std::endl;
 		rootNode = buildBVH(triangles, 0, triangles.size() - 1, 0);
 		
-		preorderTraversal(rootNode);
+		// preorderTraversal(rootNode);
 		std::cout << "buildBVH" << std::endl;
 	}
 	float intersect_depth(const glm::vec3 &org, const glm::vec3 &dir);
