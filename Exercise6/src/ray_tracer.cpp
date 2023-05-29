@@ -97,33 +97,43 @@ float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::v
 	if ( t_exit <= t_enter || t_exit<0)
 	// // 不能用== 因为最后的子节点包围盒实际上是一个很薄的平面，因为只包了一个三角形
 		return depth;
-	else if (node->triangleId >= 0) // 如果包围盒里有三角形
-	{
-		Triangle tri = triangles[node->triangleId];
-		// std::cout<<node->triangleId<<","<<tri.p1.x<<std::endl;
-		float self_depth = intersect_triangle(tri, org, dir);
-	
-		if (node->leftChild != nullptr) //双三角形
-		{
-			float left_depth = intersect_bvh(node->leftChild, org, dir);
-			if (left_depth > 0 && self_depth > 0)
-			{
-				depth = std::min(left_depth, self_depth);
+	if (node->triIds.size()>0){
+		for(auto triId:node->triIds){
+			float tri_depth=intersect_triangle(triangles[triId], org, dir);
+			if(tri_depth>0 && (tri_depth<depth ||depth < 0)){
+				depth = tri_depth;
 			}
-			else if (left_depth < 0 && self_depth > 0)
-			{
-				depth = self_depth;
-			}
-			else
-			{
-				depth = left_depth;
-			}
-			// depth = intersect_bvh(node->leftChild, org, dir);
-		}else{//单三角形
-			depth = self_depth;
 		}
-		// depth = self_depth;
 	}
+
+	
+	// else if (node->triangleId >= 0) // 如果包围盒里有三角形
+	// {
+	// 	Triangle tri = triangles[node->triangleId];
+	// 	// std::cout<<node->triangleId<<","<<tri.p1.x<<std::endl;
+	// 	float self_depth = intersect_triangle(tri, org, dir);
+	
+	// 	if (node->leftChild != nullptr) //双三角形
+	// 	{
+	// 		float left_depth = intersect_bvh(node->leftChild, org, dir);
+	// 		if (left_depth > 0 && self_depth > 0)
+	// 		{
+	// 			depth = std::min(left_depth, self_depth);
+	// 		}
+	// 		else if (left_depth < 0 && self_depth > 0)
+	// 		{
+	// 			depth = self_depth;
+	// 		}
+	// 		else
+	// 		{
+	// 			depth = left_depth;
+	// 		}
+	// 		// depth = intersect_bvh(node->leftChild, org, dir);
+	// 	}else{//单三角形
+	// 		depth = self_depth;
+	// 	}
+	// 	// depth = self_depth;
+	// }
 	else
 	{
 		float left_depth = intersect_bvh(node->leftChild, org, dir);

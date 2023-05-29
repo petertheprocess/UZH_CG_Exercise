@@ -39,7 +39,7 @@ private:
 	{
 		glm::vec3 boundsMin;
 		glm::vec3 boundsMax;
-		int triangleId;
+		std::vector<int> triIds;
 		BVHNode *leftChild;
 		BVHNode *rightChild;
 	};
@@ -50,7 +50,28 @@ private:
 	float intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::vec3 &dir);
 	float intersect_triangle(const Triangle &tri, const glm::vec3 &org, const glm::vec3 &dir);
 
-	void computeBoundingBox(const Triangle &triangle, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
+	// void computeBoundingBox(const Triangle &triangle, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
+	// {
+	// 	// boundsMin.x = std::min(std::min(triangle.p0.x, triangle.p1.x), triangle.p2.x);
+	// 	// boundsMin.y = std::min(std::min(triangle.p0.y, triangle.p1.y), triangle.p2.y);
+	// 	// boundsMin.z = std::min(std::min(triangle.p0.z, triangle.p1.z), triangle.p2.z);
+
+	// 	// boundsMax.x = std::max(std::max(triangle.p0.x, triangle.p1.x), triangle.p2.x);
+	// 	// boundsMax.y = std::max(std::max(triangle.p0.y, triangle.p1.y), triangle.p2.y);
+	// 	// boundsMax.z = std::max(std::max(triangle.p0.z, triangle.p1.z), triangle.p2.z);
+
+	// 	for(int i=0;i<3;i++){
+	// 		boundsMin[i] = std::min(std::min(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
+	// 		boundsMax[i] = std::max(std::max(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
+	// 		if(boundsMax[i] - boundsMin[i] < 0.1){
+	// 			boundsMax[i] += 0.1;
+	// 			boundsMin[i] -= 0.1;
+	// 		}
+	// 	}
+	// 	// std::cout << "boundsBox" << std::endl;
+	// }
+
+	void computeBoundingBox(const std::vector<int> &triIds, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
 	{
 		// boundsMin.x = std::min(std::min(triangle.p0.x, triangle.p1.x), triangle.p2.x);
 		// boundsMin.y = std::min(std::min(triangle.p0.y, triangle.p1.y), triangle.p2.y);
@@ -59,10 +80,20 @@ private:
 		// boundsMax.x = std::max(std::max(triangle.p0.x, triangle.p1.x), triangle.p2.x);
 		// boundsMax.y = std::max(std::max(triangle.p0.y, triangle.p1.y), triangle.p2.y);
 		// boundsMax.z = std::max(std::max(triangle.p0.z, triangle.p1.z), triangle.p2.z);
+		if(triIds.size()==0){
+			return;
+		}
 
 		for(int i=0;i<3;i++){
-			boundsMin[i] = std::min(std::min(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
-			boundsMax[i] = std::max(std::max(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
+			boundsMin[i] = std::min(std::min(triangles[triIds[0]].p0[i], triangles[triIds[0]].p1[i]), triangles[triIds[0]].p2[i]);
+			boundsMax[i] = std::max(std::max(triangles[triIds[0]].p0[i], triangles[triIds[0]].p1[i]), triangles[triIds[0]].p2[i]);
+			for(auto triId:triIds){
+				float min_tmp = std::min(std::min(triangles[triId].p0[i], triangles[triId].p1[i]), triangles[triId].p2[i]);
+				float max_tmp = std::max(std::max(triangles[triId].p0[i], triangles[triId].p1[i]), triangles[triId].p2[i]);
+				boundsMin[i] = std::min(min_tmp,boundsMin[i]);
+				boundsMax[i] = std::max(max_tmp,boundsMax[i]);
+			}
+
 			if(boundsMax[i] - boundsMin[i] < 0.1){
 				boundsMax[i] += 0.1;
 				boundsMin[i] -= 0.1;
@@ -79,38 +110,46 @@ private:
 			return nullptr;
 		}
 		BVHNode *node = new BVHNode;
-		node->triangleId = -1;
-
-		if (start == end)
-		{
-			// std::cout<<start<<":s=e:"<<end<<std::endl;
-			// 叶节点，包含一个三角形
+		// node->triIds = -1;
+		if (end - start < 8){
 			node->leftChild = nullptr;
 			node->rightChild = nullptr;
-			node->triangleId = start;
-			// std::cout << "make triId:" << node->triangleId << std::endl;
-			computeBoundingBox(triangles[start], node->boundsMin, node->boundsMax);
-		}
-		else if (start + 1 == end)
-		{
-			// 叶节点，包含两个三角形
-			node->leftChild = new BVHNode;
-			node->rightChild = nullptr;
-			node->triangleId = end;
-			// std::cout << "make triId:" << node->triangleId << std::endl;
-			node->leftChild->triangleId = start;
-			node->leftChild->leftChild = nullptr;
-			node->leftChild->rightChild = nullptr;
-			// std::cout << "make triId:" << node->leftChild->triangleId << std::endl;
-			computeBoundingBox(triangles[start], node->leftChild->boundsMin, node->leftChild->boundsMax);
-			computeBoundingBox(triangles[end], node->boundsMin, node->boundsMax);
-			for (int i = 0; i < 3; ++i)
-			{
-				// std::cout<<"bounds"<<std::endl;
-				node->boundsMin[i] = std::min(node->leftChild->boundsMin[i], node->boundsMin[i]);
-				node->boundsMax[i] = std::max(node->leftChild->boundsMax[i], node->boundsMax[i]);
+			for(int ind = start;ind <= end;ind++){
+				node->triIds.push_back(ind);
 			}
+			computeBoundingBox(node->triIds,node->boundsMin, node->boundsMax);
 		}
+
+		// if (start == end)
+		// {
+		// 	// std::cout<<start<<":s=e:"<<end<<std::endl;
+		// 	// 叶节点，包含一个三角形
+		// 	node->leftChild = nullptr;
+		// 	node->rightChild = nullptr;
+		// 	node->triangleId = start;
+		// 	// std::cout << "make triId:" << node->triangleId << std::endl;
+		// 	computeBoundingBox(triangles[start], node->boundsMin, node->boundsMax);
+		// }
+		// else if (start + 1 == end)
+		// {
+		// 	// 叶节点，包含两个三角形
+		// 	node->leftChild = new BVHNode;
+		// 	node->rightChild = nullptr;
+		// 	node->triangleId = end;
+		// 	// std::cout << "make triId:" << node->triangleId << std::endl;
+		// 	node->leftChild->triangleId = start;
+		// 	node->leftChild->leftChild = nullptr;
+		// 	node->leftChild->rightChild = nullptr;
+		// 	// std::cout << "make triId:" << node->leftChild->triangleId << std::endl;
+		// 	computeBoundingBox(triangles[start], node->leftChild->boundsMin, node->leftChild->boundsMax);
+		// 	computeBoundingBox(triangles[end], node->boundsMin, node->boundsMax);
+		// 	for (int i = 0; i < 3; ++i)
+		// 	{
+		// 		// std::cout<<"bounds"<<std::endl;
+		// 		node->boundsMin[i] = std::min(node->leftChild->boundsMin[i], node->boundsMin[i]);
+		// 		node->boundsMax[i] = std::max(node->leftChild->boundsMax[i], node->boundsMax[i]);
+		// 	}
+		// }
 		else
 		{
 			// 计算包围盒的中心点
