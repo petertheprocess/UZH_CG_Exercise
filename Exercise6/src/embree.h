@@ -62,6 +62,12 @@ class embree
 	public:
 		embree();
 		~embree();
+		std::vector<unsigned> face_num;
+		std::vector<unsigned> vertex_num;
+		std::vector<glm::vec3> colors;
+		std::vector<glm::vec3> positions;
+		std::vector<glm::vec3> normals;
+		std::vector<glm::uvec3> faces;
 
 		void build_bvh();
 		unsigned add_mesh(const Shape & mesh);

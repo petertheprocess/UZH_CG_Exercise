@@ -326,7 +326,8 @@ namespace cgCourse
 		{
 			glm::uvec2 window_size = getFramebufferSize();
 
-			CImg<float> img(window_size.x, window_size.y, 1);
+			// CImg<float> img(window_size.x, window_size.y, 1);
+			CImg<float> img(window_size.x, window_size.y, 1, 3);
 
 			build_time = omp_get_wtime();
 				// if(!rt) rt = new rt_embree({torus.get(), cube.get()});
@@ -335,7 +336,7 @@ namespace cgCourse
 			build_time = omp_get_wtime() - build_time;
 
 			rays_time = omp_get_wtime();
-				rt->raycasting(img.data(), window_size, cam);
+				rt->raycasting(img.data(), window_size, cam, *lightbox);
 			rays_time = omp_get_wtime() - rays_time;
 
 			img.normalize(0, 255);

@@ -34,23 +34,41 @@ unsigned embree::add_mesh(const Shape & mesh)
 
 	RTCGeometry geom = rtcNewGeometry(device, RTC_GEOMETRY_TYPE_TRIANGLE);
 
-	const std::vector<glm::vec3> & positions = mesh.positions;
+	face_num.push_back(mesh.faces.size());
+	vertex_num.push_back(mesh.positions.size());
+
+	// positions = mesh.positions;
 	glm::vec3 * vertices = (glm::vec3 *) rtcSetNewGeometryBuffer(geom,
 		RTC_BUFFER_TYPE_VERTEX, 0,
 		RTC_FORMAT_FLOAT3, 3 * sizeof(float),
-		positions.size());
+		mesh.positions.size());
 
-	const std::vector<glm::uvec3> & faces = mesh.faces;
+	// faces = mesh.faces;
 	glm::uvec3 * tri_idxs = (glm::uvec3 *) rtcSetNewGeometryBuffer(geom,
 		RTC_BUFFER_TYPE_INDEX, 0,
 		RTC_FORMAT_UINT3, 3 * sizeof(int),
-		faces.size());
+		mesh.faces.size());
 
-	for (unsigned i = 0; i < positions.size(); i++)
-		vertices[i] = glm::vec3(model_matrix * glm::vec4(positions[i], 1.f));
+	// colors = mesh.colors;
+	
+	glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(model_matrix)));
 
-	for (unsigned i = 0; i < faces.size(); i++)
-		tri_idxs[i] = faces[i];
+	// for (unsigned i = 0; i < normals.size(); i++)
+	// 	normals.push_back(normal_matrix * mesh.normals[i]);
+
+	for (unsigned i = 0; i < mesh.positions.size(); i++){
+		vertices[i] = glm::vec3(model_matrix * glm::vec4(mesh.positions[i], 1.f));
+		normals.push_back(glm::normalize(normal_matrix * mesh.normals[i]));
+		colors.push_back(mesh.colors[i]);
+		positions.push_back(vertices[i]);
+	}
+
+
+	for (unsigned i = 0; i < mesh.faces.size(); i++){
+		tri_idxs[i] = mesh.faces[i];
+		faces.push_back( mesh.faces[i]);
+	}
+	
 
 	rtcCommitGeometry(geom);
 

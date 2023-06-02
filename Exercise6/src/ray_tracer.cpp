@@ -2,10 +2,11 @@
 #include "stdlib.h"
 #include "iostream"
 #define EPSILON 0.00000001f
+#define OFFSET_SHADOW 0.1f
 // TODO: play with the samples number, add a input control in the UI (user interface, ImGui window)
 int ray_tracer::samples = 4;
 
-void ray_tracer::raycasting(float *buffer, const glm::ivec2 &window_size, const Camera &cam)
+void ray_tracer::raycasting(float *buffer, const glm::ivec2 &window_size, const Camera &cam, const Cube &lightbox)
 {
 	glm::mat4 inv_proj_view = glm::inverse(cam.getViewProjectionMatrix());
 
@@ -13,15 +14,58 @@ void ray_tracer::raycasting(float *buffer, const glm::ivec2 &window_size, const 
 	for (int i = 0; i < window_size.x; ++i)
 		for (int j = 0; j < window_size.y; ++j)
 		{
+			glm::vec3 color = glm::vec3(0.0f); 
+			glm::vec3 normal = glm::vec3(0.0f); 
+			glm::vec3 shade_color = glm::vec3(0.0f); 
+			float depth = 0;
 			// row major
-			float &depth = buffer[(window_size.y - j - 1) * window_size.x + i] = 0;
+			float &colorR = buffer[(window_size.y - j - 1) * window_size.x + i] = 0;
+			float &colorG = buffer[window_size.x*window_size.y + (window_size.y - j - 1) * window_size.x + i] = 0;
+			float &colorB = buffer[2*(window_size.x*window_size.y) + (window_size.y - j - 1) * window_size.x + i] = 0;
+
 			glm::vec3 dir = ray_view_dir({i, j}, window_size, inv_proj_view, cam.getPosition());
+			// add shadow ray
 
-			for (int s = 0; s < samples; ++s)
-				depth += intersect_depth(cam.getPosition(), dir);
+			for (int s = 0; s < samples; ++s){
+				glm::vec3 color_sample = glm::vec3(0);
+				glm::vec3 normal_sample = glm::vec3(0);
+				depth += intersect_depth_color(cam.getPosition(), dir, color_sample, normal_sample );
+				color += color_sample;
+				normal += normal_sample;
+			}
 
+			color /= samples;
 			depth /= samples;
+			normal /= samples;
+			normal = glm::normalize(normal);
+
+
+			if (depth > 0)
+			{
+				glm::vec3 p_world = depth*dir+cam.getPosition();
+				glm::vec3 shadow_dir = glm::normalize(p_world-lightbox.getPosition());
+				float dis_to_light = glm::distance(p_world,lightbox.getPosition());
+				float depth_shadow = intersect_depth(lightbox.getPosition(), shadow_dir);
+				bool shadow = (fabsf(depth_shadow-dis_to_light)>OFFSET_SHADOW);
+				shade_color = shade(normal,color,-shadow_dir,glm::vec3(1.0f),-dir,shadow);
+			}
+			colorR = shade_color.x;
+			colorG = shade_color.y;
+			colorB = shade_color.z;
 		}
+}
+
+
+glm::vec3 ray_tracer::shade(glm::vec3 normal, glm::vec3 color, glm::vec3 light_dir, glm::vec3 light_color, glm::vec3 view_dir, bool shadow){
+	glm::vec3 ambient = color * light_color * 0.3f;
+	glm::vec3 diffuse = float(std::max(glm::dot(normal,light_dir),0.0f)) * light_color * color;
+	glm::vec3 half_vec = glm::normalize(light_dir + view_dir);
+	float specDot = float(std::max(glm::dot(half_vec,normal),0.0f));
+	glm::vec3 specular = float(std::pow(specDot, 32)) * light_color * color;
+	float shadow_factor = shadow? 0.0f:1.0f;
+	
+	return ambient+shadow_factor*(diffuse+specular);
+	// return color;
 }
 
 glm::vec3 ray_tracer::ray_view_dir(const glm::ivec2 &pos, const glm::ivec2 &window_size, const glm::mat4 &inv_proj_view, const glm::vec3 &cam_pos)
@@ -46,8 +90,8 @@ glm::vec3 ray_tracer::ray_view_dir(const glm::ivec2 &pos, const glm::ivec2 &wind
 float rt_simple::intersect_triangle(const Triangle &tri, const glm::vec3 &org, const glm::vec3 &dir)
 {
 	float depth = -1;
-	glm::vec3 normal = cross(tri.p1 - tri.p0, tri.p2 - tri.p0);
-	float d = -dot(normal, tri.p1);
+	glm::vec3 normal = cross(tri.v1.position - tri.v0.position, tri.v2.position - tri.v0.position);
+	float d = -dot(normal, tri.v1.position);
 	// std::cout<<"d:"<<d<<std::endl;
 	if (fabsf(dot(normal, dir)) < EPSILON)
 		return depth;
@@ -59,23 +103,24 @@ float rt_simple::intersect_triangle(const Triangle &tri, const glm::vec3 &org, c
 		return depth;
 	glm::vec3 p_intersect = org + t * dir;
 	float dis = distance(p_intersect, org);
-	
+
 	// if (depth != NULL && dis > depth)
 	// 	return depth;
 	// std::cout<<"dis:"<<dis<<std::endl;
-	if (dot(cross(tri.p1 - tri.p0, p_intersect - tri.p0), normal) < 0)
+	if (dot(cross(tri.v1.position - tri.v0.position, p_intersect - tri.v0.position), normal) < 0)
 		return depth;
-	if (dot(cross(tri.p2 - tri.p1, p_intersect - tri.p1), normal) < 0)
+	if (dot(cross(tri.v2.position - tri.v1.position, p_intersect - tri.v1.position), normal) < 0)
 		return depth;
-	if (dot(cross(tri.p0 - tri.p2, p_intersect - tri.p2), normal) < 0)
+	if (dot(cross(tri.v0.position - tri.v2.position, p_intersect - tri.v2.position), normal) < 0)
 		return depth;
 	// std::cout<<"depth:"<<depth<<std::endl;
 	return depth = dis;
 }
 
-float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::vec3 &dir)
+float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::vec3 &dir, int &intersect_triID)
 {
 	float depth = -1;
+	intersect_triID = -1;
 	if (node == nullptr)
 		return depth;
 
@@ -93,62 +138,48 @@ float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::v
 	float t_enter = std::max(std::max(t_min[0], t_min[1]), t_min[2]);
 	float t_exit = std::min(std::min(t_max[0], t_max[1]), t_max[2]);
 	// std::cout<<"t_enter"<<t_enter<<"t_exit"<<t_exit<<std::endl;
-	
-	if ( t_exit <= t_enter || t_exit<0)
-	// // 不能用== 因为最后的子节点包围盒实际上是一个很薄的平面，因为只包了一个三角形
+
+	if (t_exit <= t_enter || t_exit < 0)
+		// // 不能用== 因为最后的子节点包围盒实际上是一个很薄的平面，因为只包了一个三角形
 		return depth;
-	if (node->triIds.size()>0){
-		for(auto triId:node->triIds){
-			float tri_depth=intersect_triangle(triangles[triId], org, dir);
-			if(tri_depth>0 && (tri_depth<depth ||depth < 0)){
+	if (node->triIds.size() > 0)
+	{
+		for (auto triId : node->triIds)
+		{
+			float tri_depth = intersect_triangle(triangles[triId], org, dir);
+			if (tri_depth > 0 && (tri_depth < depth || depth < 0))
+			{
 				depth = tri_depth;
+				intersect_triID = triId;
 			}
 		}
 	}
-
-	
-	// else if (node->triangleId >= 0) // 如果包围盒里有三角形
-	// {
-	// 	Triangle tri = triangles[node->triangleId];
-	// 	// std::cout<<node->triangleId<<","<<tri.p1.x<<std::endl;
-	// 	float self_depth = intersect_triangle(tri, org, dir);
-	
-	// 	if (node->leftChild != nullptr) //双三角形
-	// 	{
-	// 		float left_depth = intersect_bvh(node->leftChild, org, dir);
-	// 		if (left_depth > 0 && self_depth > 0)
-	// 		{
-	// 			depth = std::min(left_depth, self_depth);
-	// 		}
-	// 		else if (left_depth < 0 && self_depth > 0)
-	// 		{
-	// 			depth = self_depth;
-	// 		}
-	// 		else
-	// 		{
-	// 			depth = left_depth;
-	// 		}
-	// 		// depth = intersect_bvh(node->leftChild, org, dir);
-	// 	}else{//单三角形
-	// 		depth = self_depth;
-	// 	}
-	// 	// depth = self_depth;
-	// }
 	else
-	{
-		float left_depth = intersect_bvh(node->leftChild, org, dir);
-		float right_depth = intersect_bvh(node->rightChild, org, dir);
+	{	
+		int left_triID = -1;
+		int right_triID = -1;
+		float left_depth = intersect_bvh(node->leftChild, org, dir, left_triID);
+		float right_depth = intersect_bvh(node->rightChild, org, dir, right_triID);
 		if (left_depth > 0 && right_depth > 0)
 		{
 			depth = std::min(left_depth, right_depth);
+			if(left_depth > right_depth){
+				depth = right_depth;
+				intersect_triID = right_triID;
+			}else{
+				depth = left_depth;
+				intersect_triID = left_triID;				
+			}
 		}
 		else if (left_depth < 0 && right_depth > 0)
 		{
 			depth = right_depth;
+			intersect_triID = right_triID;
 		}
 		else
 		{
 			depth = left_depth;
+			intersect_triID = left_triID;
 		}
 	}
 
@@ -157,25 +188,140 @@ float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::v
 
 float rt_simple::intersect_depth(const glm::vec3 &org, const glm::vec3 &dir)
 {
-	float depth = intersect_bvh(rootNode, org, dir);
+	int triID = -1;
+	float depth = intersect_bvh(rootNode, org, dir, triID);
 	// std::cout<<"depth:"<<depth<<std::endl;
 	return depth > 0 ? depth : 0;
 };
 
+float rt_simple::intersect_depth_color(const glm::vec3 &org, const glm::vec3 &dir, glm::vec3 &color, glm::vec3 &normal)
+{
+	int triID = -1;
+	float depth = intersect_bvh(rootNode, org, dir, triID);
+	if(depth>0){
+		Triangle tri = triangles[triID];
+		glm::vec3 pt = org + depth * dir;
+		color = barycentricInterpolation(pt,tri.v0.position,tri.v1.position,tri.v2.position,tri.v0.color,tri.v1.color,tri.v2.color);
+		normal = barycentricInterpolation(pt,tri.v0.position,tri.v1.position,tri.v2.position,tri.v0.normal,tri.v1.normal,tri.v2.normal);
+		return depth;
+	}else{
+		return -1;
+	}
+}
+
 unsigned rt_simple::add_mesh(const Shape &mesh)
 {
-	model_matrix = mesh.getModelMatrix();
+	glm::mat4 model_matrix = mesh.getModelMatrix();
+	glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(model_matrix)));
 	unsigned count = 0;
 	for (auto face : mesh.faces)
 	{
 		Triangle tri;
-		tri.p0 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]], 1.0f));
-		tri.p1 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[1]], 1.0f));
-		tri.p2 = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[2]], 1.0f));
+		tri.v0.position = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[0]], 1.0f));
+		tri.v1.position = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[1]], 1.0f));
+		tri.v2.position = glm::vec3(model_matrix * glm::vec4(mesh.positions[face[2]], 1.0f));
+		tri.v0.color = mesh.colors[face[0]];
+		tri.v1.color = mesh.colors[face[1]];
+		tri.v2.color = mesh.colors[face[2]];
+		tri.v0.normal = normal_matrix*mesh.normals[face[0]];
+		tri.v1.normal = normal_matrix*mesh.normals[face[1]];
+		tri.v2.normal = normal_matrix*mesh.normals[face[2]];
 		triangles.push_back(tri);
-		// std::cout<<triangles[count].p0.x<<std::endl;
+		// std::cout<<triangles[count].v0.position.x<<std::endl;
 		count++;
 	}
 	return count;
 }
-// TODO: add the definition of the methods here.
+
+void rt_simple::computeBoundingBox(const std::vector<int> &triIds, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
+{
+	if (triIds.size() == 0)
+	{
+		return;
+	}
+
+	for (int i = 0; i < 3; i++)
+	{
+		boundsMin[i] = std::min(std::min(triangles[triIds[0]].v0.position[i], triangles[triIds[0]].v1.position[i]), triangles[triIds[0]].v2.position[i]);
+		boundsMax[i] = std::max(std::max(triangles[triIds[0]].v0.position[i], triangles[triIds[0]].v1.position[i]), triangles[triIds[0]].v2.position[i]);
+		for (auto triId : triIds)
+		{
+			float min_tmp = std::min(std::min(triangles[triId].v0.position[i], triangles[triId].v1.position[i]), triangles[triId].v2.position[i]);
+			float max_tmp = std::max(std::max(triangles[triId].v0.position[i], triangles[triId].v1.position[i]), triangles[triId].v2.position[i]);
+			boundsMin[i] = std::min(min_tmp, boundsMin[i]);
+			boundsMax[i] = std::max(max_tmp, boundsMax[i]);
+		}
+
+		if (boundsMax[i] - boundsMin[i] < 0.1)
+		{
+			boundsMax[i] += 0.1;
+			boundsMin[i] -= 0.1;
+		}
+	}
+}
+
+rt_simple::BVHNode *rt_simple::buildBVH(std::vector<Triangle> &triangles, int start, int end, int axis)
+{
+
+	if (start > end)
+	{
+		return nullptr;
+	}
+	BVHNode *node = new BVHNode;
+	if (end - start < 8)
+	{
+		node->leftChild = nullptr;
+		node->rightChild = nullptr;
+		for (int ind = start; ind <= end; ind++)
+		{
+			node->triIds.push_back(ind);
+		}
+		computeBoundingBox(node->triIds, node->boundsMin, node->boundsMax);
+	}
+	else
+	{
+		// 计算包围盒的中心点
+		float boundsCenter = 0.0f;
+		for (int i = start; i <= end; ++i)
+		{
+			float centroid = (triangles[i].v0.position[axis] + triangles[i].v1.position[axis] + triangles[i].v2.position[axis]) / 3.0f;
+			boundsCenter += centroid;
+		}
+		boundsCenter /= (end - start + 1);
+
+		// 根据中心点划分三角形
+		int l_ind = start;
+		int r_ind = end;
+
+		while (l_ind < r_ind)
+		{
+			float l_centroid = (triangles[l_ind].v0.position[axis] + triangles[l_ind].v1.position[axis] + triangles[l_ind].v2.position[axis]) / 3.0f;
+			float r_centroid = (triangles[r_ind].v0.position[axis] + triangles[r_ind].v1.position[axis] + triangles[r_ind].v2.position[axis]) / 3.0f;
+			if (l_centroid > boundsCenter)
+			{
+				std::swap(triangles[l_ind], triangles[r_ind - 1]);
+			}
+			l_ind++;
+			if (r_centroid <= boundsCenter)
+			{
+				std::swap(triangles[r_ind], triangles[l_ind + 1]);
+			}
+			r_ind--;
+		}
+		int mid = r_ind;
+		// std::cout<<start<<"::"<<mid<<"::"<<end<<std::endl;
+		// 递归构建左右子树
+		node->leftChild = buildBVH(triangles, start, mid, (axis + 1) % 3);
+		node->rightChild = buildBVH(triangles, mid + 1, end, (axis + 1) % 3);
+
+		// 计算节点的包围盒
+		for (int i = 0; i < 3; ++i)
+		{
+			// std::cout<<"bounds"<<std::endl;
+			node->boundsMin[i] = std::min(node->leftChild->boundsMin[i], node->rightChild->boundsMin[i]);
+			node->boundsMax[i] = std::max(node->leftChild->boundsMax[i], node->rightChild->boundsMax[i]);
+		}
+	}
+
+	return node;
+}

@@ -2,21 +2,41 @@
 #define RAY_TRACER_H
 
 #include "embree.h"
+#include "Cube.h"
 #include <iostream>
 
 class ray_tracer
 {
 public:
 	static int samples;
+	std::vector<glm::vec3> colors;
 
 public:
 	ray_tracer() = default;
 	~ray_tracer() = default;
 
 	virtual float intersect_depth(const glm::vec3 &org, const glm::vec3 &dir) = 0;
+	// virtual glm::vec3 shade() = 0;
+	virtual float intersect_depth_color(const glm::vec3 &org, const glm::vec3 &dir, glm::vec3 &color, glm::vec3 &normal) = 0;
 
-	void raycasting(float *buffer, const glm::ivec2 &window_size, const Camera &cam);
+	void raycasting(float *buffer, const glm::ivec2 &window_size, const Camera &cam, const Cube &lightbox);
+	glm::vec3 shade(glm::vec3 normal, glm::vec3 color, glm::vec3 light_dir, glm::vec3 light_color, glm::vec3 view_dir, bool shadow);
 	glm::vec3 ray_view_dir(const glm::ivec2 &pos, const glm::ivec2 &window_size, const glm::mat4 &inv_proj_view, const glm::vec3 &cam_pos);
+	glm::vec3 barycentricInterpolation(const glm::vec3 &p, const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, const glm::vec3 &color0, const glm::vec3 &color1, const glm::vec3 &color2)
+	{
+		glm::vec3 e0 = v2 - v1;
+		glm::vec3 e1 = v2 - v0;
+
+		glm::vec3 p2 = p - v2;
+
+		float denom = glm::length(glm::cross(e0, e1));
+
+		float factor1 = glm::length(glm::cross(e1, p2)) / denom;
+		float factor0 = glm::length(glm::cross(e0, p2)) / denom;
+		float factor2 = 1 - factor0 - factor1;
+
+		return factor0 * color0 + factor1 * color1 + factor2 * color2;
+	}
 };
 
 // TODO: this ray tracer implementation compute the ray triangle intersection with all the triangles in the scene.
@@ -24,13 +44,20 @@ class rt_simple : public ray_tracer
 {
 	// TODO: add possible data members and class methods.
 private:
-	glm::mat4 model_matrix;
+	// glm::mat4 model_matrix;
+
+	struct Vertex
+	{
+		glm::vec3 position;
+		glm::vec3 color;
+		glm::vec3 normal;
+	};
 
 	struct Triangle
 	{
-		glm::vec3 p0;
-		glm::vec3 p1;
-		glm::vec3 p2;
+		Vertex v0;
+		Vertex v1;
+		Vertex v2;
 	};
 
 	std::vector<Triangle> triangles;
@@ -47,171 +74,11 @@ private:
 	BVHNode *rootNode;
 
 	unsigned add_mesh(const Shape &mesh);
-	float intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::vec3 &dir);
+	float intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::vec3 &dir, int &intersect_triID);
 	float intersect_triangle(const Triangle &tri, const glm::vec3 &org, const glm::vec3 &dir);
-
-	// void computeBoundingBox(const Triangle &triangle, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
-	// {
-	// 	// boundsMin.x = std::min(std::min(triangle.p0.x, triangle.p1.x), triangle.p2.x);
-	// 	// boundsMin.y = std::min(std::min(triangle.p0.y, triangle.p1.y), triangle.p2.y);
-	// 	// boundsMin.z = std::min(std::min(triangle.p0.z, triangle.p1.z), triangle.p2.z);
-
-	// 	// boundsMax.x = std::max(std::max(triangle.p0.x, triangle.p1.x), triangle.p2.x);
-	// 	// boundsMax.y = std::max(std::max(triangle.p0.y, triangle.p1.y), triangle.p2.y);
-	// 	// boundsMax.z = std::max(std::max(triangle.p0.z, triangle.p1.z), triangle.p2.z);
-
-	// 	for(int i=0;i<3;i++){
-	// 		boundsMin[i] = std::min(std::min(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
-	// 		boundsMax[i] = std::max(std::max(triangle.p0[i], triangle.p1[i]), triangle.p2[i]);
-	// 		if(boundsMax[i] - boundsMin[i] < 0.1){
-	// 			boundsMax[i] += 0.1;
-	// 			boundsMin[i] -= 0.1;
-	// 		}
-	// 	}
-	// 	// std::cout << "boundsBox" << std::endl;
-	// }
-
-	void computeBoundingBox(const std::vector<int> &triIds, glm::vec3 &boundsMin, glm::vec3 &boundsMax)
-	{
-		// boundsMin.x = std::min(std::min(triangle.p0.x, triangle.p1.x), triangle.p2.x);
-		// boundsMin.y = std::min(std::min(triangle.p0.y, triangle.p1.y), triangle.p2.y);
-		// boundsMin.z = std::min(std::min(triangle.p0.z, triangle.p1.z), triangle.p2.z);
-
-		// boundsMax.x = std::max(std::max(triangle.p0.x, triangle.p1.x), triangle.p2.x);
-		// boundsMax.y = std::max(std::max(triangle.p0.y, triangle.p1.y), triangle.p2.y);
-		// boundsMax.z = std::max(std::max(triangle.p0.z, triangle.p1.z), triangle.p2.z);
-		if(triIds.size()==0){
-			return;
-		}
-
-		for(int i=0;i<3;i++){
-			boundsMin[i] = std::min(std::min(triangles[triIds[0]].p0[i], triangles[triIds[0]].p1[i]), triangles[triIds[0]].p2[i]);
-			boundsMax[i] = std::max(std::max(triangles[triIds[0]].p0[i], triangles[triIds[0]].p1[i]), triangles[triIds[0]].p2[i]);
-			for(auto triId:triIds){
-				float min_tmp = std::min(std::min(triangles[triId].p0[i], triangles[triId].p1[i]), triangles[triId].p2[i]);
-				float max_tmp = std::max(std::max(triangles[triId].p0[i], triangles[triId].p1[i]), triangles[triId].p2[i]);
-				boundsMin[i] = std::min(min_tmp,boundsMin[i]);
-				boundsMax[i] = std::max(max_tmp,boundsMax[i]);
-			}
-
-			if(boundsMax[i] - boundsMin[i] < 0.1){
-				boundsMax[i] += 0.1;
-				boundsMin[i] -= 0.1;
-			}
-		}
-		// std::cout << "boundsBox" << std::endl;
-	}
-
-	BVHNode *buildBVH(std::vector<Triangle> &triangles, int start, int end, int axis)
-	{
-
-		if (start > end)
-		{
-			return nullptr;
-		}
-		BVHNode *node = new BVHNode;
-		// node->triIds = -1;
-		if (end - start < 8){
-			node->leftChild = nullptr;
-			node->rightChild = nullptr;
-			for(int ind = start;ind <= end;ind++){
-				node->triIds.push_back(ind);
-			}
-			computeBoundingBox(node->triIds,node->boundsMin, node->boundsMax);
-		}
-
-		// if (start == end)
-		// {
-		// 	// std::cout<<start<<":s=e:"<<end<<std::endl;
-		// 	// 叶节点，包含一个三角形
-		// 	node->leftChild = nullptr;
-		// 	node->rightChild = nullptr;
-		// 	node->triangleId = start;
-		// 	// std::cout << "make triId:" << node->triangleId << std::endl;
-		// 	computeBoundingBox(triangles[start], node->boundsMin, node->boundsMax);
-		// }
-		// else if (start + 1 == end)
-		// {
-		// 	// 叶节点，包含两个三角形
-		// 	node->leftChild = new BVHNode;
-		// 	node->rightChild = nullptr;
-		// 	node->triangleId = end;
-		// 	// std::cout << "make triId:" << node->triangleId << std::endl;
-		// 	node->leftChild->triangleId = start;
-		// 	node->leftChild->leftChild = nullptr;
-		// 	node->leftChild->rightChild = nullptr;
-		// 	// std::cout << "make triId:" << node->leftChild->triangleId << std::endl;
-		// 	computeBoundingBox(triangles[start], node->leftChild->boundsMin, node->leftChild->boundsMax);
-		// 	computeBoundingBox(triangles[end], node->boundsMin, node->boundsMax);
-		// 	for (int i = 0; i < 3; ++i)
-		// 	{
-		// 		// std::cout<<"bounds"<<std::endl;
-		// 		node->boundsMin[i] = std::min(node->leftChild->boundsMin[i], node->boundsMin[i]);
-		// 		node->boundsMax[i] = std::max(node->leftChild->boundsMax[i], node->boundsMax[i]);
-		// 	}
-		// }
-		else
-		{
-			// 计算包围盒的中心点
-
-			float boundsCenter = 0.0f;
-			for (int i = start; i <= end; ++i)
-			{
-				float centroid = (triangles[i].p0[axis] + triangles[i].p1[axis] + triangles[i].p2[axis]) / 3.0f;
-				boundsCenter += centroid;
-			}
-			boundsCenter /= (end - start + 1);
-
-			// 根据中心点划分三角形
-			int l_ind = start;
-			int r_ind = end;
-
-			while (l_ind < r_ind)
-			{
-				float l_centroid = (triangles[l_ind].p0[axis] + triangles[l_ind].p1[axis] + triangles[l_ind].p2[axis]) / 3.0f;
-				float r_centroid = (triangles[r_ind].p0[axis] + triangles[r_ind].p1[axis] + triangles[r_ind].p2[axis]) / 3.0f;
-				if (l_centroid > boundsCenter)
-				{
-					std::swap(triangles[l_ind], triangles[r_ind - 1]);
-				}
-				l_ind++;
-				if (r_centroid <= boundsCenter)
-				{
-					std::swap(triangles[r_ind], triangles[l_ind + 1]);
-				}
-				r_ind--;
-			}
-			int mid = r_ind;
-			// std::cout<<start<<"::"<<mid<<"::"<<end<<std::endl;
-			// 递归构建左右子树
-			node->leftChild = buildBVH(triangles, start, mid, (axis + 1) % 3);
-			node->rightChild = buildBVH(triangles, mid + 1, end, (axis + 1) % 3);
-
-			// 计算节点的包围盒
-			
-			for (int i = 0; i < 3; ++i)
-			{
-				// std::cout<<"bounds"<<std::endl;
-				node->boundsMin[i] = std::min(node->leftChild->boundsMin[i], node->rightChild->boundsMin[i]);
-				node->boundsMax[i] = std::max(node->leftChild->boundsMax[i], node->rightChild->boundsMax[i]);
-			}
-
-		}
-
-		return node;
-	}
-	// void preorderTraversal(BVHNode *root)
-	// {
-	// 	// std::cout << "root->triangleId"
-	// 	// 		  << " "<< std::endl;
-	// 	if (root == nullptr )
-	// 	{
-	// 		return;
-	// 	}
-	// 	std::cout<< root->triangleId<<std::endl;					 // 打印当前节点的值
-	// 	preorderTraversal(root->leftChild);	 // 遍历左子树
-	// 	preorderTraversal(root->rightChild); // 遍历右子树
-	// };
+	float intersect_depth_color(const glm::vec3 &org, const glm::vec3 &dir, glm::vec3 &color, glm::vec3 &normal);
+	void computeBoundingBox(const std::vector<int> &triIds, glm::vec3 &boundsMin, glm::vec3 &boundsMax);
+	BVHNode *buildBVH(std::vector<Triangle> &triangles, int start, int end, int axis);
 
 public:
 	// TODO: complete the definition of this method.
@@ -222,7 +89,7 @@ public:
 		std::cout << "-----------add_mesh" << std::endl;
 		std::cout << "triNum:" << triangles.size() << std::endl;
 		rootNode = buildBVH(triangles, 0, triangles.size() - 1, 0);
-		
+
 		// preorderTraversal(rootNode);
 		std::cout << "buildBVH" << std::endl;
 	}
@@ -231,12 +98,13 @@ public:
 
 class rt_embree : public ray_tracer, public embree
 {
+
 public:
 	rt_embree(const std::vector<Shape *> &shapes)
 	{
 		for (auto &mesh : shapes)
 			add_mesh(*mesh);
-
+		ray_tracer::colors = embree::colors;
 		build_bvh();
 	}
 
@@ -244,6 +112,42 @@ public:
 	{
 		ray_hit r(org, dir);
 		return intersect(r) ? r.ray.tfar : 0.f;
+	}
+
+	float intersect_depth_color(const glm::vec3 &org, const glm::vec3 &dir, glm::vec3 &color, glm::vec3 &normal)
+	{
+		ray_hit r(org, dir);
+		if (intersect(r))
+		{
+			float depth = r.ray.tfar;
+			glm::vec3 pt = org + r.ray.tfar * dir;
+			unsigned tri_id = r.hit.primID;
+			unsigned geom_id = r.hit.geomID;
+			unsigned vertex_offset = 0;
+			for (int i = 0; i < geom_id; i++)
+			{
+				tri_id += face_num[i];
+				vertex_offset += vertex_num[i];
+			}
+
+			glm::vec3 p0 = embree::positions[vertex_offset + embree::faces[tri_id][0]];
+			glm::vec3 p1 = embree::positions[vertex_offset + embree::faces[tri_id][1]];
+			glm::vec3 p2 = embree::positions[vertex_offset + embree::faces[tri_id][2]];
+			glm::vec3 color0 = embree::colors[vertex_offset + embree::faces[tri_id][0]];
+			glm::vec3 color1 = embree::colors[vertex_offset + embree::faces[tri_id][1]];
+			glm::vec3 color2 = embree::colors[vertex_offset + embree::faces[tri_id][2]];
+			glm::vec3 n0 = embree::normals[vertex_offset + embree::faces[tri_id][0]];
+			glm::vec3 n1 = embree::normals[vertex_offset + embree::faces[tri_id][1]];
+			glm::vec3 n2 = embree::normals[vertex_offset + embree::faces[tri_id][2]];
+			// barycentric Interpolation
+			color = barycentricInterpolation(pt, p0, p1, p2, color0, color1, color2);
+			normal = barycentricInterpolation(pt, p0, p1, p2, n0, n1, n2);
+			return depth;
+		}
+		else
+		{
+			return 0.0f;
+		}
 	}
 };
 
