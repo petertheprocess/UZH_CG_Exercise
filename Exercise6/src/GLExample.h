@@ -36,7 +36,7 @@ namespace cgCourse
 	struct RayTracingMapping
 	{
 		GLuint textureID;
-		unsigned char *buffer;
+		std::shared_ptr<CImg<float>> imgPtr;
 		std::shared_ptr<Shape> canva;
 		std::shared_ptr<ShaderProgram> shader;
 	}
@@ -98,6 +98,7 @@ namespace cgCourse
 		bool displayDepthBuffer = false;
 		bool useTextures = false;
 		bool shadowMapping = false;
+		bool displayRT = false;
 
 		ShadowMapping shadows;
 

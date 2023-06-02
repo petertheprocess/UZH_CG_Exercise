@@ -8,18 +8,16 @@
 
 using namespace cimg_library;
 
-
 namespace cgCourse
 {
-	GLExample::GLExample(glm::uvec2 _windowSize, std::string _title): GLApp(_windowSize, _title, false) {}
+	GLExample::GLExample(glm::uvec2 _windowSize, std::string _title) : GLApp(_windowSize, _title, false) {}
 
 	bool GLExample::init()
 	{
-		cam.create(	getFramebufferSize(),
-					glm::vec3(3, 3, -3),
-					glm::vec3(0, 0, 0),
-					glm::vec3(0, 1, 0)
-					);
+		cam.create(getFramebufferSize(),
+				   glm::vec3(3, 3, -3),
+				   glm::vec3(0, 0, 0),
+				   glm::vec3(0, 1, 0));
 
 		programForShadows = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/Shadows");
 		programForShape = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/Shape");
@@ -27,7 +25,7 @@ namespace cgCourse
 		programForLightBox = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/Lightbox");
 
 		lightbox = std::make_shared<Cube>();
-		if(!lightbox->createVertexArray(0, 1, 2, 3, 4))
+		if (!lightbox->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
 		lightbox->setPosition(glm::vec3(0.0, 0.5, -2.0));
@@ -35,32 +33,29 @@ namespace cgCourse
 		lightboxColor = glm::vec3(1.0, 1.0, 1.0);
 
 		cube = std::make_shared<Cube>();
-		if(!cube->createVertexArray(0, 1, 2, 3, 4))
+		if (!cube->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
 		cube->setPosition(glm::vec3(-2, -1.5, 5));
 		cube->setScaling(glm::vec3(2.5, 2.5, 2.5));
 
 		torus = std::make_shared<Torus>();
-		if(!torus->createVertexArray(0, 1, 2, 3, 4))
+		if (!torus->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
 		torus->setPosition(glm::vec3(-1, 0, 0));
 		torus->setRotation(90, glm::vec3(1, 0, 0));
 
-		normalsTorus = std::make_shared<MultiLine>(	torus->positions,
-													torus->normals,
-													torus->tangents,
-													torus->texCoords
-													);
-		if(!normalsTorus->createVertexArray(0, 1, 2, 3, 4))
+		normalsTorus = std::make_shared<MultiLine>(torus->positions,
+												   torus->normals,
+												   torus->tangents,
+												   torus->texCoords);
+		if (!normalsTorus->createVertexArray(0, 1, 2, 3, 4))
 			return false;
-
 
 		light.ambientTerm = {1, 1, 1};
 		light.diffuseTerm = {1, 1, 1};
 		light.specularTerm = {1, 1, 1};
-
 
 		cubetex = std::make_shared<Texture>();
 		cubetex->loadFromFile(std::string(RES_DIR) + "/container.png");
@@ -79,6 +74,9 @@ namespace cgCourse
 
 		torustexSpec = std::make_shared<Texture>();
 		torustexSpec->loadFromFile(std::string(RES_DIR) + "/brickwall_specular.jpg");
+
+		// Ray tracing
+		displayRTinit();
 
 		// ShadowMapping
 		glGenFramebuffers(1, &shadows.depthMapFBO);
@@ -104,19 +102,33 @@ namespace cgCourse
 
 	bool GLExample::update()
 	{
-		//torus->setRotation(5, glm::vec3(1.0f, 1.0f, 1.0f));
-		//cube->setRotation(1, glm::vec3(0, 1.0f, 0));
+		// torus->setRotation(5, glm::vec3(1.0f, 1.0f, 1.0f));
+		// cube->setRotation(1, glm::vec3(0, 1.0f, 0));
 
-		if(animationDir == Forward)
+		// build_time = omp_get_wtime();
+		if(!rt) rt = new rt_embree({torus.get(), cube.get()});
+
+		// build_time = omp_get_wtime() - build_time;
+		// rays_time = omp_get_wtime();
+		rt->raycasting(rt_map.imgPtr->data(), window_size, cam, *lightbox);
+		rays_time = omp_get_wtime() - rays_time;
+
+		rt_map.imgPtr->normalize(0, 255);
+
+
+		if (displayRT)
+			return true;
+
+		if (animationDir == Forward)
 		{
-			if(animation > 1.5)
+			if (animation > 1.5)
 				animationDir = Backward;
 			else
 				animation += 0.01;
 		}
 		else
 		{
-			if(animation < -2.0)
+			if (animation < -2.0)
 				animationDir = Forward;
 			else
 				animation -= 0.01;
@@ -136,15 +148,18 @@ namespace cgCourse
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 
+		renderRTmap();
+		if (displayRT)
+			return true;
+
 		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 16.0f);
 		glm::mat4 lightView = glm::lookAt(lightbox->getPosition(), glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
 		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
 		shadow_mapping(lightSpaceMatrix);
 
-		if(displayDepthBuffer)
+		if (displayDepthBuffer)
 			return true;
-
 
 		renderLightBox();
 
@@ -156,9 +171,9 @@ namespace cgCourse
 		return true;
 	}
 
-	void GLExample::shadow_mapping(const glm::mat4 & lightSpaceMatrix)
+	void GLExample::shadow_mapping(const glm::mat4 &lightSpaceMatrix)
 	{
-		if(!displayDepthBuffer)
+		if (!displayDepthBuffer)
 		{
 			glViewport(0, 0, shadows.width, shadows.height);
 			glBindFramebuffer(GL_FRAMEBUFFER, shadows.depthMapFBO);
@@ -177,13 +192,13 @@ namespace cgCourse
 
 		programForShadows->unbind();
 
-		if(!displayDepthBuffer)
+		if (!displayDepthBuffer)
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 	}
 
-	void GLExample::addLightVariables(const std::shared_ptr<ShaderProgram> & program)
+	void GLExample::addLightVariables(const std::shared_ptr<ShaderProgram> &program)
 	{
 		program->bind();
 		glUniform3fv(program->getUniformLocation("camPos"), 1, &cam.getPosition()[0]);
@@ -196,7 +211,7 @@ namespace cgCourse
 		program->unbind();
 	}
 
-	void GLExample::renderCubes(const glm::mat4 & lightSpaceMatrix)
+	void GLExample::renderCubes(const glm::mat4 &lightSpaceMatrix)
 	{
 		programForShape->bind();
 
@@ -233,7 +248,7 @@ namespace cgCourse
 		programForShape->unbind();
 	}
 
-	void GLExample::renderTorus(const glm::mat4 & lightSpaceMatrix)
+	void GLExample::renderTorus(const glm::mat4 &lightSpaceMatrix)
 	{
 		programForShape->bind();
 
@@ -269,8 +284,8 @@ namespace cgCourse
 
 		programForShape->unbind();
 
-
-		if(!drawTorusNormals) return;
+		if (!drawTorusNormals)
+			return;
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, torustex->getTexHandle());
@@ -316,13 +331,13 @@ namespace cgCourse
 		ImGui::Checkbox("useTextures", &useTextures);
 		ImGui::Checkbox("displayDepthBuffer", &displayDepthBuffer);
 		ImGui::Checkbox("shadowMapping", &shadowMapping);
+		ImGui::CheckBox("displayRayTracing", &dispalyRT);
 		ImGui::Separator();
 
 		static float build_time = 0;
 		static float rays_time = 0;
 
-
-		if(ImGui::Button("Depth Ray Casting"))
+		if (ImGui::Button("Depth Ray Casting"))
 		{
 			glm::uvec2 window_size = getFramebufferSize();
 
@@ -330,13 +345,14 @@ namespace cgCourse
 			CImg<float> img(window_size.x, window_size.y, 1, 3);
 
 			build_time = omp_get_wtime();
-				// if(!rt) rt = new rt_embree({torus.get(), cube.get()});
-				// TODO: uncomment the line to test your ray tracer implementation and comment the line before.
-				if(!rt) rt = new rt_simple({torus.get(),cube.get()});
+			// if(!rt) rt = new rt_embree({torus.get(), cube.get()});
+			// TODO: uncomment the line to test your ray tracer implementation and comment the line before.
+			if (!rt)
+				rt = new rt_simple({torus.get(), cube.get()});
 			build_time = omp_get_wtime() - build_time;
 
 			rays_time = omp_get_wtime();
-				rt->raycasting(img.data(), window_size, cam, *lightbox);
+			rt->raycasting(img.data(), window_size, cam, *lightbox);
 			rays_time = omp_get_wtime() - rays_time;
 
 			img.normalize(0, 255);
@@ -351,10 +367,17 @@ namespace cgCourse
 		ImGui::End();
 	}
 
-	bool GLExample::displayRTinit(){
+	bool GLExample::displayRTinit()
+	{
 		// create texture object
 		glGenTextures(1, &rt_map.textureID);
 		glBindTexture(GL_TEXTURE_2D, rt_map.textureID);
+
+		//
+		glm::uvec2 window_size = getFramebufferSize();
+		rt_map.imgPtr = std::make_shared<CImg<float>>(window_size.x, window_size.y, 1, 3);
+		// CImg<float> img(window_size.x, window_size.y, 1, 3);
+
 
 		// set params
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -362,15 +385,14 @@ namespace cgCourse
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rt_map.buffer);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rt_map.imgPtr->data());
 		glBindTexture(GL_TEXTURE_2D, 0);
 
 		rt_map.canva = std::make_shared<Square>();
-		if(!rt_map.canva->createVertexArray(0, 1, 2, 3, 4))
+		if (!rt_map.canva->createVertexArray(0, 1, 2, 3, 4))
 			return false;
 
 		rt_map.shader = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/RayTracing");
-		
 	}
 	void GLExample::renderRTmap()
 	{
@@ -389,4 +411,3 @@ namespace cgCourse
 	}
 
 }
-
