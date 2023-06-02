@@ -2,7 +2,7 @@
 #include <iostream>
 #include <glm/gtx/string_cast.hpp>
 namespace cgCourse
-{
+{ 
 	Cube::Cube() : Shape()
 	{
 		// set geometry with respect to local origin

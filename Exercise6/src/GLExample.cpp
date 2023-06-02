@@ -350,5 +350,43 @@ namespace cgCourse
 
 		ImGui::End();
 	}
+
+	bool GLExample::displayRTinit(){
+		// create texture object
+		glGenTextures(1, &rt_map.textureID);
+		glBindTexture(GL_TEXTURE_2D, rt_map.textureID);
+
+		// set params
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rt_map.buffer);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		rt_map.canva = std::make_shared<Square>();
+		if(!rt_map.canva->createVertexArray(0, 1, 2, 3, 4))
+			return false;
+
+		rt_map.shader = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/RayTracing");
+		
+	}
+	void GLExample::renderRTmap()
+	{
+		rt_map.shader->bind();
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, rt_map.textureID);
+
+		glUniform1i(programForShape->getUniformLocation("texMap"), 0);
+		rt_map.canva->draw();
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		rt_map.shader->unbind();
+	}
+
 }
 

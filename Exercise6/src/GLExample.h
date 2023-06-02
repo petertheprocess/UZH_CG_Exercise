@@ -33,6 +33,14 @@ namespace cgCourse
 		GLuint depthMapFBO;
 	};
 
+	struct RayTracingMapping
+	{
+		GLuint textureID;
+		unsigned char *buffer;
+		std::shared_ptr<Shape> canva;
+		std::shared_ptr<ShaderProgram> shader;
+	}
+
 	class GLExample : public GLApp
 	{
 	public:
@@ -57,6 +65,9 @@ namespace cgCourse
 		void renderTorus(const glm::mat4 & lightSpaceMatrix);
 
 		void shadow_mapping(const glm::mat4 & lightSpaceMatrix);
+
+		void GLExample::renderRTmap();
+		bool GLExample::displayRTinit();
 
 		std::shared_ptr<ShaderProgram> programForShadows;
 		std::shared_ptr<ShaderProgram> programForShape;
@@ -91,6 +102,9 @@ namespace cgCourse
 		ShadowMapping shadows;
 
 		ray_tracer * rt = nullptr;
+
+
+		RayTracingMapping rt_map;
 	};
 }
 
