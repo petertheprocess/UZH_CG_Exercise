@@ -87,3 +87,6 @@ bool embree::intersect(ray_hit & r)
 	return r.hit.primID != -1;
 }
 
+// bool embree::intersectQuery(ray_hit & r){
+// 	return r.hit.primID != -1;
+// }

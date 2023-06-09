@@ -10,11 +10,18 @@
 #include "Texture.h"
 #include "ray_tracer.h"
 
+#include "Square.h"
+
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
 #include <memory>
+
+#define cimg_display 0
+#include <CImg.h>
+
+
 
 namespace cgCourse
 {
@@ -36,10 +43,10 @@ namespace cgCourse
 	struct RayTracingMapping
 	{
 		GLuint textureID;
-		std::shared_ptr<CImg<float>> imgPtr;
+		std::shared_ptr<cimg_library::CImg<float>> imgPtr;
 		std::shared_ptr<Shape> canva;
 		std::shared_ptr<ShaderProgram> shader;
-	}
+	};
 
 	class GLExample : public GLApp
 	{
@@ -66,8 +73,8 @@ namespace cgCourse
 
 		void shadow_mapping(const glm::mat4 & lightSpaceMatrix);
 
-		void GLExample::renderRTmap();
-		bool GLExample::displayRTinit();
+		void renderRTmap();
+		bool displayRTinit();
 
 		std::shared_ptr<ShaderProgram> programForShadows;
 		std::shared_ptr<ShaderProgram> programForShape;
@@ -99,6 +106,8 @@ namespace cgCourse
 		bool useTextures = false;
 		bool shadowMapping = false;
 		bool displayRT = false;
+
+		float frame_time;
 
 		ShadowMapping shadows;
 

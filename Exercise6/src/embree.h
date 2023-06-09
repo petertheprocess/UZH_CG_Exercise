@@ -68,6 +68,7 @@ class embree
 		std::vector<glm::vec3> positions;
 		std::vector<glm::vec3> normals;
 		std::vector<glm::uvec3> faces;
+		// std::shared_ptr<ray_hit> last_r_ptr;
 
 		void build_bvh();
 		unsigned add_mesh(const Shape & mesh);

@@ -33,7 +33,7 @@ namespace cgCourse
         };
 
 		faces = {
-			{ 0, 1, 2 }, { 2, 3, 0 }
+			{ 0, 2, 1 }, { 3, 2, 0 }
 		};
 
 		for(const glm::vec3 & n: normals)

@@ -3,9 +3,6 @@
 
 #include <iostream>
 
-#define cimg_display 0
-#include <CImg.h>
-
 using namespace cimg_library;
 
 namespace cgCourse
@@ -77,6 +74,7 @@ namespace cgCourse
 
 		// Ray tracing
 		displayRTinit();
+		rt = new rt_embree({torus.get(), cube.get()});
 
 		// ShadowMapping
 		glGenFramebuffers(1, &shadows.depthMapFBO);
@@ -105,19 +103,7 @@ namespace cgCourse
 		// torus->setRotation(5, glm::vec3(1.0f, 1.0f, 1.0f));
 		// cube->setRotation(1, glm::vec3(0, 1.0f, 0));
 
-		// build_time = omp_get_wtime();
-		if(!rt) rt = new rt_embree({torus.get(), cube.get()});
-
-		// build_time = omp_get_wtime() - build_time;
-		// rays_time = omp_get_wtime();
-		rt->raycasting(rt_map.imgPtr->data(), window_size, cam, *lightbox);
-		rays_time = omp_get_wtime() - rays_time;
-
-		rt_map.imgPtr->normalize(0, 255);
-
-
-		if (displayRT)
-			return true;
+		frame_time = omp_get_wtime();
 
 		if (animationDir == Forward)
 		{
@@ -135,7 +121,35 @@ namespace cgCourse
 		}
 
 		lightbox->setPosition(glm::vec3(animation, 1, -2));
+		if (displayRT)
+		{
+			if (!rt)
+				rt = new rt_embree({torus.get(), cube.get()});
 
+			// build_time = omp_get_wtime() - build_time;
+			// rays_time = omp_get_wtime();
+			glm::uvec2 window_size = getFramebufferSize();
+			rt->raycasting(rt_map.imgPtr->data(), window_size, cam, *lightbox);
+			// rays_time = omp_get_wtime() - rays_time;
+			// rt_map.imgPtr->normalize(0, 255);
+			std::vector<float> rearrangedData(window_size.x * window_size.y * 3);
+			const float *buffer = rt_map.imgPtr->data();
+			for (int y = 0; y <  window_size.y; y++)
+			{
+				for (int x = 0; x < window_size.x; x++)
+				{
+					int index = (y * window_size.x + x) * 3;
+					rearrangedData[index] = buffer[(window_size.y - y - 1) * window_size.x + x];		// Red channel
+					rearrangedData[index + 1] = buffer[window_size.x*window_size.y + (window_size.y - y - 1) * window_size.x + x]; // Green channel
+					rearrangedData[index + 2] = buffer[2*(window_size.x*window_size.y) + (window_size.y - y - 1) * window_size.x + x]; // Blue channel
+				}
+			}
+			glBindTexture(GL_TEXTURE_2D, rt_map.textureID);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_size.x, window_size.y, 0, GL_RGB, GL_FLOAT,rearrangedData.data());
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+			// rt_map.imgPtr->save("test.jpg");
+		}
 		return true;
 	}
 
@@ -148,9 +162,12 @@ namespace cgCourse
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 
-		renderRTmap();
 		if (displayRT)
+		{
+			renderRTmap();
+			frame_time = omp_get_wtime() - frame_time;
 			return true;
+		}
 
 		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 16.0f);
 		glm::mat4 lightView = glm::lookAt(lightbox->getPosition(), glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
@@ -327,11 +344,13 @@ namespace cgCourse
 	{
 		ImGui::SetNextWindowSize(ImVec2(300, -1));
 		ImGui::Begin("status", nullptr, ImGuiWindowFlags_NoTitleBar);
+		
 		ImGui::Checkbox("drawTorusNormals", &drawTorusNormals);
 		ImGui::Checkbox("useTextures", &useTextures);
 		ImGui::Checkbox("displayDepthBuffer", &displayDepthBuffer);
 		ImGui::Checkbox("shadowMapping", &shadowMapping);
-		ImGui::CheckBox("displayRayTracing", &dispalyRT);
+		ImGui::Checkbox("displayRayTracing", &displayRT);
+		ImGui::InputInt("samples", &rt->samples);
 		ImGui::Separator();
 
 		static float build_time = 0;
@@ -342,13 +361,14 @@ namespace cgCourse
 			glm::uvec2 window_size = getFramebufferSize();
 
 			// CImg<float> img(window_size.x, window_size.y, 1);
+			// create a colored img
 			CImg<float> img(window_size.x, window_size.y, 1, 3);
 
 			build_time = omp_get_wtime();
-			// if(!rt) rt = new rt_embree({torus.get(), cube.get()});
+			if(!rt) rt = new rt_embree({torus.get(), cube.get()});
 			// TODO: uncomment the line to test your ray tracer implementation and comment the line before.
-			if (!rt)
-				rt = new rt_simple({torus.get(), cube.get()});
+			// if (!rt)
+			// 	rt = new rt_simple({torus.get(), cube.get()});
 			build_time = omp_get_wtime() - build_time;
 
 			rays_time = omp_get_wtime();
@@ -356,13 +376,14 @@ namespace cgCourse
 			rays_time = omp_get_wtime() - rays_time;
 
 			img.normalize(0, 255);
-			img.save("depth.jpg");
+			img.save("rgb.jpg");
 		}
 
 		ImGui::Indent();
 		ImGui::Text("Total Triangles: %lu", cube->faces.size() + torus->faces.size());
 		ImGui::Text("Build Tracer Time: %.3fs", build_time);
 		ImGui::Text("Raycasting Time: %.3fs", rays_time);
+		ImGui::Text("One Frame Time: %.3fs", frame_time);
 
 		ImGui::End();
 	}
@@ -378,14 +399,14 @@ namespace cgCourse
 		rt_map.imgPtr = std::make_shared<CImg<float>>(window_size.x, window_size.y, 1, 3);
 		// CImg<float> img(window_size.x, window_size.y, 1, 3);
 
-
 		// set params
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, rt_map.imgPtr->data());
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_size.x, window_size.y, 0, GL_RGB, GL_UNSIGNED_BYTE, rt_map.imgPtr->data());
+
 		glBindTexture(GL_TEXTURE_2D, 0);
 
 		rt_map.canva = std::make_shared<Square>();
@@ -393,12 +414,14 @@ namespace cgCourse
 			return false;
 
 		rt_map.shader = std::make_shared<ShaderProgram>(std::string(SHADER_DIR) + "/RayTracing");
+		return true;
 	}
 	void GLExample::renderRTmap()
 	{
 		rt_map.shader->bind();
-
+		glm::uvec2 window_size = getFramebufferSize();
 		glActiveTexture(GL_TEXTURE0);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_size.x, window_size.y, 0, GL_RGB, GL_UNSIGNED_BYTE, rt_map.imgPtr->data());
 		glBindTexture(GL_TEXTURE_2D, rt_map.textureID);
 
 		glUniform1i(programForShape->getUniformLocation("texMap"), 0);

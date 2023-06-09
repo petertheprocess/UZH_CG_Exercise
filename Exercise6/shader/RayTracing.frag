@@ -8,6 +8,8 @@ uniform sampler2D texMap;
 
 void main()
 {
-	color = texture(texMap, texCoord.xy).rgb;
+	color = texture(texMap, texCoord).rgb;
+	// color = objectColor;
+
 }
 

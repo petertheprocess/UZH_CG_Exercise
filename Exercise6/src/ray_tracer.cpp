@@ -4,7 +4,7 @@
 #define EPSILON 0.00000001f
 #define OFFSET_SHADOW 0.1f
 // TODO: play with the samples number, add a input control in the UI (user interface, ImGui window)
-int ray_tracer::samples = 4;
+int ray_tracer::samples = 1;
 
 void ray_tracer::raycasting(float *buffer, const glm::ivec2 &window_size, const Camera &cam, const Cube &lightbox)
 {
@@ -19,17 +19,19 @@ void ray_tracer::raycasting(float *buffer, const glm::ivec2 &window_size, const 
 			glm::vec3 shade_color = glm::vec3(0.0f); 
 			float depth = 0;
 			// row major
+			// ind index = (i * window_size.x + window_size.y - j - 1) * 3;
 			float &colorR = buffer[(window_size.y - j - 1) * window_size.x + i] = 0;
 			float &colorG = buffer[window_size.x*window_size.y + (window_size.y - j - 1) * window_size.x + i] = 0;
 			float &colorB = buffer[2*(window_size.x*window_size.y) + (window_size.y - j - 1) * window_size.x + i] = 0;
 
 			glm::vec3 dir = ray_view_dir({i, j}, window_size, inv_proj_view, cam.getPosition());
-			// add shadow ray
+			
 
 			for (int s = 0; s < samples; ++s){
+				glm::vec3 sample_dir = ray_view_dir({i, j}, window_size, inv_proj_view, cam.getPosition());
 				glm::vec3 color_sample = glm::vec3(0);
 				glm::vec3 normal_sample = glm::vec3(0);
-				depth += intersect_depth_color(cam.getPosition(), dir, color_sample, normal_sample );
+				depth += intersect_depth_color(cam.getPosition(), sample_dir, color_sample, normal_sample );
 				color += color_sample;
 				normal += normal_sample;
 			}
@@ -38,15 +40,19 @@ void ray_tracer::raycasting(float *buffer, const glm::ivec2 &window_size, const 
 			depth /= samples;
 			normal /= samples;
 			normal = glm::normalize(normal);
-
+			// 对于每个hit到目标的像素，我们存下他的depth, normal 和 color
+			// 然后如果之后物体和相机位置不变，我们可以直接取这些数据进行阴影和着色计算
 
 			if (depth > 0)
 			{
+				// add shadow ray
 				glm::vec3 p_world = depth*dir+cam.getPosition();
 				glm::vec3 shadow_dir = glm::normalize(p_world-lightbox.getPosition());
 				float dis_to_light = glm::distance(p_world,lightbox.getPosition());
 				float depth_shadow = intersect_depth(lightbox.getPosition(), shadow_dir);
 				bool shadow = (fabsf(depth_shadow-dis_to_light)>OFFSET_SHADOW);
+
+				// apply illumination
 				shade_color = shade(normal,color,-shadow_dir,glm::vec3(1.0f),-dir,shadow);
 			}
 			colorR = shade_color.x;
@@ -140,7 +146,6 @@ float rt_simple::intersect_bvh(BVHNode *node, const glm::vec3 &org, const glm::v
 	// std::cout<<"t_enter"<<t_enter<<"t_exit"<<t_exit<<std::endl;
 
 	if (t_exit <= t_enter || t_exit < 0)
-		// // 不能用== 因为最后的子节点包围盒实际上是一个很薄的平面，因为只包了一个三角形
 		return depth;
 	if (node->triIds.size() > 0)
 	{
@@ -280,7 +285,7 @@ rt_simple::BVHNode *rt_simple::buildBVH(std::vector<Triangle> &triangles, int st
 	}
 	else
 	{
-		// 计算包围盒的中心点
+		// compute the center of BB
 		float boundsCenter = 0.0f;
 		for (int i = start; i <= end; ++i)
 		{
@@ -289,7 +294,7 @@ rt_simple::BVHNode *rt_simple::buildBVH(std::vector<Triangle> &triangles, int st
 		}
 		boundsCenter /= (end - start + 1);
 
-		// 根据中心点划分三角形
+		// split the triangles
 		int l_ind = start;
 		int r_ind = end;
 
@@ -310,11 +315,11 @@ rt_simple::BVHNode *rt_simple::buildBVH(std::vector<Triangle> &triangles, int st
 		}
 		int mid = r_ind;
 		// std::cout<<start<<"::"<<mid<<"::"<<end<<std::endl;
-		// 递归构建左右子树
+		// build child leaves
 		node->leftChild = buildBVH(triangles, start, mid, (axis + 1) % 3);
 		node->rightChild = buildBVH(triangles, mid + 1, end, (axis + 1) % 3);
 
-		// 计算节点的包围盒
+		// compute AABB of the node
 		for (int i = 0; i < 3; ++i)
 		{
 			// std::cout<<"bounds"<<std::endl;
